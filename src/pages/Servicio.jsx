@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Header from "../components/Header";
 import Footer from "../components/Footer";
-import "../css/servicio.css";
+import "src/css/servicio.css";
 
 const Servicio = () => {
   const [activeService, setActiveService] = useState(null);

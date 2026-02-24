@@ -39,14 +39,14 @@ const Footer = () => {
   ];
 
   return (
-    <footer className="rr-footer">
+    <footer className="ftr-root">
       {/* TOP BAR */}
-      <div className="rr-footer-top">
-        <div className="container">
-          <div className="footer-top-content">
-            <div className="top-badge">🏍️ DESDE 2009</div>
-            <div className="top-text">LA PASIÓN POR LAS DOS RUEDAS</div>
-            <div className="top-stats">
+      <div className="ftr-top-bar">
+        <div className="ftr-container">
+          <div className="ftr-top-content">
+            <div className="ftr-top-badge">🏍️ DESDE 2009</div>
+            <div className="ftr-top-text">LA PASIÓN POR LAS DOS RUEDAS</div>
+            <div className="ftr-top-stats">
               <span>15+ AÑOS</span>
               <span>•</span>
               <span>5000+ CLIENTES</span>
@@ -58,57 +58,57 @@ const Footer = () => {
       </div>
 
       {/* MAIN FOOTER */}
-      <div className="rr-footer-main">
-        <div className="container">
-          <div className="footer-grid">
+      <div className="ftr-main">
+        <div className="ftr-container">
+          <div className="ftr-grid">
             
             {/* BRAND COLUMN */}
-            <div className="footer-brand">
-              <div className="brand-header">
-                <div className="brand-logo">
-                  <span className="logo-icon">🏍️</span>
-                  <div className="logo-text">
-                    <span className="logo-main">RR</span>
-                    <span className="logo-accent">BIKER</span>
+            <div className="ftr-brand">
+              <div className="ftr-brand-header">
+                <div className="ftr-logo">
+                  <span className="ftr-logo-icon">🏍️</span>
+                  <div className="ftr-logo-text">
+                    <span className="ftr-logo-main">RR</span>
+                    <span className="ftr-logo-accent">BIKER</span>
                   </div>
                 </div>
-                <div className="brand-tag">GUACARA • VENEZUELA</div>
+                <div className="ftr-logo-tag">GUACARA • VENEZUELA</div>
               </div>
               
-              <p className="brand-desc">
+              <p className="ftr-brand-desc">
                 Especialistas en equipamiento premium y repuestos de alta performance para motocicletas. 
                 Tu moto merece lo mejor, nosotros lo hacemos posible.
               </p>
 
-              <div className="brand-features">
-                <div className="feature-item">
-                  <span className="feature-check">✓</span>
+              <div className="ftr-brand-features">
+                <div className="ftr-feature-item">
+                  <span className="ftr-feature-check">✓</span>
                   <span>Garantía extendida</span>
                 </div>
-                <div className="feature-item">
-                  <span className="feature-check">✓</span>
+                <div className="ftr-feature-item">
+                  <span className="ftr-feature-check">✓</span>
                   <span>Envíos nacionales</span>
                 </div>
-                <div className="feature-item">
-                  <span className="feature-check">✓</span>
+                <div className="ftr-feature-item">
+                  <span className="ftr-feature-check">✓</span>
                   <span>Soporte técnico</span>
                 </div>
               </div>
             </div>
 
             {/* NAVIGATION COLUMN */}
-            <div className="footer-nav">
-              <h4 className="footer-title">
-                <span className="title-line"></span>
+            <div className="ftr-nav">
+              <h4 className="ftr-title">
+                <span className="ftr-title-line"></span>
                 NAVEGACIÓN
               </h4>
-              <ul className="nav-list">
+              <ul className="ftr-nav-list">
                 {navLinks.map((link, idx) => (
                   <li key={idx} style={{ animationDelay: `${idx * 0.1}s` }}>
-                    <Link to={link.to} className="nav-link">
-                      <span className="link-icon">{link.icon}</span>
-                      <span className="link-text">{link.label}</span>
-                      <span className="link-arrow">→</span>
+                    <Link to={link.to} className="ftr-nav-link">
+                      <span className="ftr-link-icon">{link.icon}</span>
+                      <span className="ftr-link-text">{link.label}</span>
+                      <span className="ftr-link-arrow">→</span>
                     </Link>
                   </li>
                 ))}
@@ -116,21 +116,21 @@ const Footer = () => {
             </div>
 
             {/* CONTACT COLUMN */}
-            <div className="footer-contact">
-              <h4 className="footer-title">
-                <span className="title-line"></span>
+            <div className="ftr-contact">
+              <h4 className="ftr-title">
+                <span className="ftr-title-line"></span>
                 CONTACTO DIRECTO
               </h4>
-              <ul className="contact-list">
+              <ul className="ftr-contact-list">
                 {contactInfo.map((item, idx) => (
-                  <li key={idx} className="contact-item">
-                    <span className="contact-icon">{item.icon}</span>
-                    <div className="contact-data">
-                      <span className="data-label">{item.label}</span>
+                  <li key={idx} className="ftr-contact-item">
+                    <span className="ftr-contact-icon">{item.icon}</span>
+                    <div className="ftr-contact-data">
+                      <span className="ftr-data-label">{item.label}</span>
                       {item.link ? (
-                        <a href={item.link} className="data-value link">{item.value}</a>
+                        <a href={item.link} className="ftr-data-value ftr-link">{item.value}</a>
                       ) : (
-                        <span className="data-value">{item.value}</span>
+                        <span className="ftr-data-value">{item.value}</span>
                       )}
                     </div>
                   </li>
@@ -139,17 +139,17 @@ const Footer = () => {
             </div>
 
             {/* NEWSLETTER COLUMN */}
-            <div className="footer-newsletter">
-              <h4 className="footer-title">
-                <span className="title-line"></span>
+            <div className="ftr-newsletter">
+              <h4 className="ftr-title">
+                <span className="ftr-title-line"></span>
                 CLUB RR BIKER
               </h4>
               
-              <div className="newsletter-box">
-                <p className="newsletter-desc">
+              <div className="ftr-newsletter-box">
+                <p className="ftr-newsletter-desc">
                   Únete a nuestro club exclusivo y recibe:
                 </p>
-                <ul className="newsletter-benefits">
+                <ul className="ftr-newsletter-benefits">
                   <li>🔥 Ofertas flash antes que nadie</li>
                   <li>🏁 Eventos y track days</li>
                   <li>💡 Tips de mantenimiento</li>
@@ -157,13 +157,13 @@ const Footer = () => {
                 </ul>
 
                 {subscribed ? (
-                  <div className="subscribe-success">
-                    <span className="success-icon">✓</span>
+                  <div className="ftr-subscribe-success">
+                    <span className="ftr-success-icon">✓</span>
                     <span>¡Bienvenido al club!</span>
                   </div>
                 ) : (
-                  <form className="subscribe-form" onSubmit={handleSubscribe}>
-                    <div className="input-group">
+                  <form className="ftr-subscribe-form" onSubmit={handleSubscribe}>
+                    <div className="ftr-input-group">
                       <input 
                         type="email" 
                         placeholder="tu@email.com"
@@ -171,25 +171,25 @@ const Footer = () => {
                         onChange={(e) => setEmail(e.target.value)}
                         required
                       />
-                      <div className="input-focus"></div>
+                      <div className="ftr-input-focus"></div>
                     </div>
-                    <button type="submit" className="subscribe-btn">
-                      <span className="btn-text">UNIRME</span>
-                      <span className="btn-icon">→</span>
+                    <button type="submit" className="ftr-subscribe-btn">
+                      <span className="ftr-btn-text">UNIRME</span>
+                      <span className="ftr-btn-icon">→</span>
                     </button>
                   </form>
                 )}
               </div>
 
               {/* SOCIAL LINKS */}
-              <div className="social-links">
-                <span className="social-label">SÍGUENOS:</span>
-                <div className="social-icons">
+              <div className="ftr-social">
+                <span className="ftr-social-label">SÍGUENOS:</span>
+                <div className="ftr-social-icons">
                   {socialLinks.map((social, idx) => (
                     <a 
                       key={idx} 
                       href={social.url} 
-                      className="social-icon"
+                      className="ftr-social-icon"
                       target="_blank" 
                       rel="noopener noreferrer"
                       aria-label={social.label}
@@ -205,42 +205,42 @@ const Footer = () => {
       </div>
 
       {/* BOTTOM BAR */}
-      <div className="rr-footer-bottom">
-        <div className="container">
-          <div className="bottom-content">
-            <div className="bottom-left">
-              <span className="copyright">
+      <div className="ftr-bottom">
+        <div className="ftr-container">
+          <div className="ftr-bottom-content">
+            <div className="ftr-bottom-left">
+              <span className="ftr-copyright">
                 © {new Date().getFullYear()} RR BIKER
               </span>
-              <span className="separator">|</span>
-              <span className="rights">TODOS LOS DERECHOS RESERVADOS</span>
+              <span className="ftr-separator">|</span>
+              <span className="ftr-rights">TODOS LOS DERECHOS RESERVADOS</span>
             </div>
             
-            <div className="bottom-center">
-              <div className="payment-methods">
-                <span className="payment-icon">💳</span>
-                <span className="payment-icon">💰</span>
-                <span className="payment-icon">📱</span>
-                <span className="payment-text">PAGO SEGURO</span>
+            <div className="ftr-bottom-center">
+              <div className="ftr-payment">
+                <span className="ftr-payment-icon">💳</span>
+                <span className="ftr-payment-icon">💰</span>
+                <span className="ftr-payment-icon">📱</span>
+                <span className="ftr-payment-text">PAGO SEGURO</span>
               </div>
             </div>
 
-            <div className="bottom-right">
-              <Link to="/privacidad" className="legal-link">PRIVACIDAD</Link>
-              <span className="separator">•</span>
-              <Link to="/terminos" className="legal-link">TÉRMINOS</Link>
-              <span className="separator">•</span>
-              <Link to="/faq" className="legal-link">FAQ</Link>
+            <div className="ftr-bottom-right">
+              <Link to="/privacidad" className="ftr-legal-link">PRIVACIDAD</Link>
+              <span className="ftr-separator">•</span>
+              <Link to="/terminos" className="ftr-legal-link">TÉRMINOS</Link>
+              <span className="ftr-separator">•</span>
+              <Link to="/faq" className="ftr-legal-link">FAQ</Link>
             </div>
           </div>
         </div>
       </div>
 
       {/* DECORATIVE ELEMENT */}
-      <div className="footer-deco">
-        <div className="deco-line"></div>
-        <div className="deco-text">RR BIKER • DESDE 2009 • GUACARA, VENEZUELA</div>
-        <div className="deco-line"></div>
+      <div className="ftr-deco">
+        <div className="ftr-deco-line"></div>
+        <div className="ftr-deco-text">RR BIKER • DESDE 2009 • GUACARA, VENEZUELA</div>
+        <div className="ftr-deco-line"></div>
       </div>
     </footer>
   );
