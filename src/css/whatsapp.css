@@ -1,0 +1,314 @@
+/* ==========================================================================
+   WHATSAPP FLOAT - RR BIKER (RED / BLACK / GRAY / WHITE)
+   ========================================================================== */
+
+.rr-biker-whatsapp {
+  position: fixed;
+  bottom: 25px;
+  right: 25px;
+  z-index: 99999;
+  font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* --- BOTÓN FLOTANTE --- */
+.whatsapp-float-btn {
+  width: 78px;
+  height: 78px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: #ffffff;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.35);
+
+  transition: all 0.35s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+/* brillo rojo elegante */
+.whatsapp-float-btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(246, 12, 20, 0.35), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+
+.whatsapp-float-btn:hover {
+  transform: translateY(-6px) scale(1.07);
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.45);
+}
+
+.whatsapp-float-btn:hover::before {
+  opacity: 1;
+}
+
+.float-icon-img {
+  width: 68%;
+  height: auto;
+  position: relative;
+  z-index: 2;
+}
+
+/* Badge */
+.notif-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+
+  background: #f60c14;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 900;
+
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 12px rgba(246, 12, 20, 0.7);
+  z-index: 3;
+
+  animation: badgePulse 1.5s infinite;
+}
+
+/* --- VENTANA --- */
+.whatsapp-window {
+  position: absolute;
+  bottom: 100px;
+  right: 0;
+
+  width: 340px;
+  border-radius: 18px;
+  overflow: hidden;
+
+  background: #ffffff;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+
+  border: 2px solid rgba(246, 12, 20, 0.15);
+
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(25px) scale(0.85);
+
+  transition: all 0.45s cubic-bezier(0.25, 0.8, 0.25, 1);
+  transform-origin: bottom right;
+}
+
+.is-open .whatsapp-window {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+}
+
+/* --- HEADER --- */
+.whatsapp-header {
+  background: #000000;
+  padding: 16px 18px;
+
+  color: #ffffff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  border-bottom: 2px solid rgba(246, 12, 20, 0.6);
+}
+
+.header-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.online-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #f60c14;
+  box-shadow: 0 0 10px rgba(246, 12, 20, 0.8);
+  animation: pulse-dot 1.8s infinite;
+}
+
+.header-text strong {
+  display: block;
+  font-size: 15px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.header-text span {
+  font-size: 11px;
+  color: #6d6d6d;
+  font-weight: 600;
+}
+
+/* botón cerrar */
+.close-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 18px;
+
+  transition: all 0.3s ease;
+}
+
+.close-btn:hover {
+  background: #f60c14;
+  transform: rotate(90deg);
+}
+
+/* --- BODY --- */
+.whatsapp-body {
+  padding: 20px;
+  background: #ffffff;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+/* scroll elegante */
+.whatsapp-body::-webkit-scrollbar {
+  width: 6px;
+}
+.whatsapp-body::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 10px;
+}
+.whatsapp-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.35);
+}
+
+/* burbuja */
+.message-bubble {
+  background: #ffffff;
+  padding: 14px 16px;
+  border-radius: 0 16px 16px 16px;
+
+  font-size: 14px;
+  color: #000000;
+  line-height: 1.6;
+
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.12);
+
+  position: relative;
+  animation: fadeInMsg 0.6s ease;
+}
+
+/* pico del mensaje */
+.message-bubble::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -7px;
+  width: 18px;
+  height: 18px;
+  background: #ffffff;
+  border-bottom-right-radius: 12px;
+  transform: rotate(45deg);
+  border-left: 1px solid rgba(0, 0, 0, 0.08);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+/* segunda burbuja */
+.second-msg {
+  margin-top: 12px;
+  background: rgba(246, 12, 20, 0.08);
+  border-radius: 16px 0 16px 16px;
+  border: 1px solid rgba(246, 12, 20, 0.25);
+}
+
+/* --- FOOTER --- */
+.whatsapp-footer {
+  padding: 16px 18px 18px;
+  background: #ffffff;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* botón iniciar chat */
+.send-btn {
+  background: #f60c14;
+  color: #ffffff;
+  text-decoration: none;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+
+  padding: 13px;
+  border-radius: 40px;
+
+  font-weight: 900;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+
+  box-shadow: 0 15px 30px rgba(246, 12, 20, 0.4);
+  transition: all 0.3s ease;
+}
+
+.send-btn:hover {
+  background: #000000;
+  transform: translateY(-3px);
+  box-shadow: 0 18px 35px rgba(0, 0, 0, 0.45);
+}
+
+.send-btn:active {
+  transform: scale(0.98);
+}
+
+/* --- ANIMACIONES --- */
+@keyframes pulse-dot {
+  0% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(1.3); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes badgePulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+@keyframes fadeInMsg {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* --- RESPONSIVE --- */
+@media (max-width: 480px) {
+  .rr-biker-whatsapp {
+    right: 15px;
+    bottom: 15px;
+  }
+
+  .whatsapp-window {
+    width: calc(100vw - 30px);
+  }
+}
