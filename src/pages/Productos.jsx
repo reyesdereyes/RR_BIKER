@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import 'src/css/producto.css';
+import '../css/producto.css';
 
 const Productos = () => {
   const [activeCategory, setActiveCategory] = useState('todos');
