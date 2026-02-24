@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import '../css/Footer.css';
+import '../css/footer.css';
 
 const Footer = () => {
   const [email, setEmail] = useState('');
