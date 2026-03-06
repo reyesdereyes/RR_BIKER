@@ -1,6 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import { 
+  FaMapMarkerAlt, FaUsers, FaEnvelope, FaPhone, FaWhatsapp, FaInstagram, FaTiktok,
+  FaParking, FaCoffee, FaCreditCard, FaTruck, FaCompass, FaCar, FaMotorcycle,
+  FaUserTie, FaUser, FaUserSecret, FaCheck, FaWheelchair, FaShieldAlt,
+  FaArrowRight,  // ← AGREGADO
+  FaTools,       // ← AGREGADO (se usa en el select de motivos)
+  FaCogs,        // ← AGREGADO (se usa en el select de motivos)
+  FaFlagCheckered // ← AGREGADO (se usa en horarios)
+} from 'react-icons/fa';
 import "../css/contacto.css";
 
 const Contacto = () => {
@@ -12,7 +21,7 @@ const Contacto = () => {
     mensaje: ''
   });
   const [activeTab, setActiveTab] = useState('info');
-  const [isVisible, setIsVisible] = useState({ hero: true }); // Hero visible por defecto
+  const [isVisible, setIsVisible] = useState({ hero: true });
   const [scrollY, setScrollY] = useState(0);
   const sectionRefs = useRef({});
 
@@ -23,7 +32,7 @@ const Contacto = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Intersection Observer para secciones (excepto hero)
+  // Intersection Observer para secciones
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -52,7 +61,7 @@ const Contacto = () => {
     {
       nombre: "Carlos 'El Jefe' Rodríguez",
       cargo: "CEO & Fundador",
-      foto: "👨‍💼",
+      foto: <FaUserTie />, // ejecutivo
       telefono: "+58 412-1234567",
       experiencia: "15 años",
       especialidad: "Estrategia & Ventas"
@@ -60,7 +69,7 @@ const Contacto = () => {
     {
       nombre: "María González",
       cargo: "Directora de Ventas",
-      foto: "👩‍💼",
+      foto: <FaUser />,
       telefono: "+58 412-7654321",
       experiencia: "8 años",
       especialidad: "Atención al Cliente"
@@ -68,7 +77,7 @@ const Contacto = () => {
     {
       nombre: "Luis 'Mecánico' Martínez",
       cargo: "Jefe de Taller",
-      foto: "👨‍🔧",
+      foto: <FaUserSecret />, // placeholder technician
       telefono: "+58 414-9876543",
       experiencia: "12 años",
       especialidad: "Motores 4T"
@@ -76,7 +85,7 @@ const Contacto = () => {
     {
       nombre: "Ana Pereira",
       cargo: "Especialista Repuestos",
-      foto: "🏍️",
+      foto: <FaMotorcycle />,
       telefono: "+58 416-1122334",
       experiencia: "6 años",
       especialidad: "Inventario & Logística"
@@ -90,24 +99,26 @@ const Contacto = () => {
   ];
 
   const features = [
-    { icon: "🅿️", title: "PARKING PRIVADO", desc: "Seguridad 24/7" },
-    { icon: "☕", title: "LOUNGE VIP", desc: "Espera premium" },
-    { icon: "💳", title: "PAGO FLEXIBLE", desc: "Múltiples métodos" },
-    { icon: "🚚", title: "DELIVERY RÁPIDO", desc: "Cobertura total" }
+    { icon: <FaParking />, title: "PARKING PRIVADO", desc: "Seguridad 24/7" },
+    { icon: <FaCoffee />, title: "LOUNGE VIP", desc: "Espera premium" },
+    { icon: <FaCreditCard />, title: "PAGO FLEXIBLE", desc: "Múltiples métodos" },
+    { icon: <FaTruck />, title: "DELIVERY RÁPIDO", desc: "Cobertura total" }
   ];
 
   const contactMethods = [
-    { icon: "📍", label: "VISÍTANOS", value: "Calle Principal, Guacara", action: "Ver mapa", link: "#mapa" },
-    { icon: "📞", label: "LLÁMANOS", value: "+58 241-1234567", action: "Llamar ahora", link: "tel:+582411234567" },
-    { icon: "💬", label: "WHATSAPP", value: "+58 412-1234567", action: "Iniciar chat", link: "https://wa.me/584121234567" },
-    { icon: "✉️", label: "EMAIL", value: "info@rrbiker.com", action: "Enviar correo", link: "mailto:info@rrbiker.com" }
+    { icon: <FaMapMarkerAlt />, label: "VISÍTANOS", value: "Calle Principal, Guacara", action: "Ver mapa", link: "#mapa" },
+    { icon: <FaPhone />, label: "LLÁMANOS", value: "+58 241-1234567", action: "Llamar ahora", link: "tel:+582411234567" },
+    { icon: <FaWhatsapp />, label: "WHATSAPP", value: "+58 412-1234567", action: "Iniciar chat", link: "https://wa.me/584121234567" },
+    { icon: <FaEnvelope />, label: "EMAIL", value: "ventas.rrbiker@gmail.com", action: "Enviar correo", link: "mailto:ventas.rrbiker@gmail.com" },
+    { icon: <FaInstagram />, label: "INSTAGRAM", value: "@rrodriguez.biker", action: "Visitar", link: "https://instagram.com/rrodriguez.biker" },
+    { icon: <FaTiktok />, label: "TIKTOK", value: "@RRBIKER_", action: "Ver perfil", link: "https://www.tiktok.com/@RRBIKER_" }
   ];
 
   return (
     <>
       <Header />
 
-      {/* HERO SECTION - SIEMPRE VISIBLE */}
+      {/* HERO SECTION */}
       <section className="ctc-hero">
         <div className="ctc-hero-bg" style={{ transform: `translateY(${scrollY * 0.3}px)` }}>
           <div className="ctc-grid-overlay"></div>
@@ -131,7 +142,7 @@ const Contacto = () => {
           </h1>
           
           <p className="ctc-hero-sub visible">
-            <span className="sub-icon">📍</span>
+            <FaMapMarkerAlt className="sub-icon" />
             CENTRO DE OPERACIONES • GUACARA, CARABOBO
           </p>
 
@@ -152,7 +163,6 @@ const Contacto = () => {
             ))}
           </div>
 
-          {/* Scroll indicator */}
           <div className="ctc-scroll-hint">
             <div className="scroll-mouse">
               <div className="scroll-wheel"></div>
@@ -163,11 +173,10 @@ const Contacto = () => {
 
         <div className="ctc-hero-deco">
           <div className="ctc-deco-line"></div>
-          <span className="ctc-deco-text">10.2354°N 67.8789°W</span>
+          <span className="ctc-deco-text">10.229223° N 67.865707° W</span>
           <div className="ctc-deco-line"></div>
         </div>
 
-        {/* Esquinas decorativas */}
         <div className="ctc-corner top-left"></div>
         <div className="ctc-corner top-right"></div>
         <div className="ctc-corner bottom-left"></div>
@@ -179,9 +188,9 @@ const Contacto = () => {
         <div className="container">
           <div className="ctc-tabs">
             {[
-              { id: 'info', label: 'INFORMACIÓN', icon: '📍' },
-              { id: 'equipo', label: 'EQUIPO', icon: '👥' },
-              { id: 'formulario', label: 'ESCRÍBENOS', icon: '✉️' }
+              { id: 'info', label: 'INFORMACIÓN', icon: <FaMapMarkerAlt /> },
+              { id: 'equipo', label: 'EQUIPO', icon: <FaUsers /> },
+              { id: 'formulario', label: 'ESCRÍBENOS', icon: <FaEnvelope /> }
             ].map(tab => (
               <button
                 key={tab.id}
@@ -204,44 +213,75 @@ const Contacto = () => {
           {/* TAB: INFORMACIÓN */}
           {activeTab === 'info' && (
             <div className={`ctc-info-grid ${isVisible.content ? 'visible' : ''}`}>
-              {/* Mapa Principal */}
+              
+              {/* Mapa Principal Mejorado */}
               <div className="ctc-map-container">
                 <div className="ctc-map-frame">
                   <div className="ctc-map-header">
                     <div className="ctc-map-coords">
                       <span className="coords-label">LAT</span>
-                      <span className="coords-value">10.2354° N</span>
+                      <span className="coords-value">10.229223° N</span>
                       <span className="coords-divider">|</span>
                       <span className="coords-label">LONG</span>
-                      <span className="coords-value">67.8789° W</span>
+                      <span className="coords-value">67.865707° W</span>
                     </div>
                     <div className="ctc-map-status">
                       <span className="status-dot"></span>
                       <span className="status-text">ABIERTO AHORA</span>
                     </div>
                   </div>
-                  <div className="ctc-map-body">
-                    <div className="ctc-map-visual">
-                      <div className="map-pin">🏍️</div>
-                      <div className="map-rings">
-                        <div className="map-ring"></div>
-                        <div className="map-ring"></div>
-                        <div className="map-ring"></div>
+                  
+                  {/* Dirección escrita destacada */}
+                  <div className="ctc-map-address">
+                      <div className="address-icon"><FaMotorcycle /></div>
+                    <div className="address-content">
+                      <h4>RR BIKER HEADQUARTERS</h4>
+                      <p className="address-street">Calle Principal entre Av. Bolívar y Calle Miranda</p>
+                      <p className="address-zone">Sector Centro, Guacara, Edo. Carabobo</p>
+                      <p className="address-landmark"><FaMapMarkerAlt /> Frente a la Plaza Bolívar, al lado del Centro Comercial Guacara Plaza</p>
+                      <div className="address-meta">
+                        <span className="meta-badge"><FaParking /> Parking Privado</span>
+                        <span className="meta-badge"><FaWheelchair /> Accesible</span>
+                        <span className="meta-badge"><FaShieldAlt /> Seguridad 24/7</span>
                       </div>
                     </div>
-                    <h3>RR BIKER HEADQUARTERS</h3>
-                    <p>Calle Principal entre Av. Bolívar y Carabobo<br/>Edificio RR Biker, Planta Baja</p>
-                    <div className="ctc-map-actions">
-                      <a href="https://maps.google.com" target="_blank" rel="noopener noreferrer" className="ctc-map-btn primary">
-                        <span>🗺️</span>
-                        <span>GOOGLE MAPS</span>
-                      </a>
-                      <a href="https://waze.com" target="_blank" rel="noopener noreferrer" className="ctc-map-btn secondary">
-                        <span>🧭</span>
-                        <span>WAZE</span>
-                      </a>
-                    </div>
                   </div>
+
+                  <div className="ctc-map-body">
+                    <iframe
+                      title="RR Biker Location"
+                      src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3926.1234567890123!2d-67.865707!3d10.229223!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMTDCsDEzJzQ1LjIiTiA2N8KwNTEnNTYuNSJX!5e0!3m2!1ses!2sve!4v1234567890123!5m2!1ses!2sve"
+                      width="100%"
+                      height="350"
+                      style={{ border: 0, filter: 'grayscale(100%) invert(92%) contrast(83%)' }}
+                      allowFullScreen=""
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                    ></iframe>
+                  </div>
+                  
+                  <div className="ctc-map-footer">
+                    <a 
+                      href="https://www.google.com/maps/dir/?api=1&destination=10.229223,-67.865707" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="map-directions-btn"
+                    >
+                      <span className="btn-icon"><FaCompass /></span>
+                      <span className="btn-text">COMO LLEGAR</span>
+                      <span className="btn-arrow"><FaArrowRight /></span>
+                    </a>
+                    <a 
+                      href="https://waze.com/ul?ll=10.229223,-67.865707&navigate=yes" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="map-waze-btn"
+                    >
+                      <span className="btn-icon"><FaCar /></span>
+                      <span className="btn-text">ABRIR EN WAZE</span>
+                    </a>
+                  </div>
+                  
                   <div className="ctc-map-grain"></div>
                 </div>
               </div>
@@ -270,7 +310,7 @@ const Contacto = () => {
               {/* Horarios Estilo Pit Board */}
               <div className="ctc-schedule">
                 <div className="schedule-header">
-                  <span className="schedule-icon">🏁</span>
+                  <span className="schedule-icon"><FaFlagCheckered /></span>
                   <h3>HORARIO DE OPERACIONES</h3>
                   <span className="schedule-status">EN SERVICIO</span>
                 </div>
@@ -338,7 +378,7 @@ const Contacto = () => {
                       <span className="team-role">{member.cargo}</span>
                       <span className="team-spec">{member.especialidad}</span>
                       <a href={`https://wa.me/${member.telefono.replace(/\D/g,'')}`} className="team-contact-btn" target="_blank" rel="noopener noreferrer">
-                        <span>📱</span>
+                        <FaPhone />
                         Contactar
                       </a>
                     </div>
@@ -355,7 +395,7 @@ const Contacto = () => {
               <div className="ctc-form-container">
                 <div className="form-header">
                   <div className="form-badge">
-                    <span className="badge-icon">✉️</span>
+                    <span className="badge-icon"><FaEnvelope /></span>
                     <span className="badge-text">NUEVO MENSAJE</span>
                   </div>
                   <div className="form-meta">
@@ -368,7 +408,7 @@ const Contacto = () => {
                   <div className="form-row">
                     <div className="input-group">
                       <label>
-                        <span className="label-icon">👤</span>
+                        <span className="label-icon"><FaUser /></span>
                         NOMBRE COMPLETO *
                       </label>
                       <input 
@@ -383,7 +423,7 @@ const Contacto = () => {
                     
                     <div className="input-group">
                       <label>
-                        <span className="label-icon">📱</span>
+                        <span className="label-icon"><FaPhone /></span>
                         TELÉFONO *
                       </label>
                       <input 
@@ -399,7 +439,7 @@ const Contacto = () => {
 
                   <div className="input-group full">
                     <label>
-                      <span className="label-icon">✉️</span>
+                      <span className="label-icon"><FaEnvelope /></span>
                       CORREO ELECTRÓNICO *
                     </label>
                     <input 
@@ -424,8 +464,8 @@ const Contacto = () => {
                         required
                       >
                         <option value="">SELECCIONAR MOTIVO</option>
-                        <option value="repuestos">🔧 CONSULTA DE REPUESTOS</option>
-                        <option value="taller">⚙️ AGENDAR SERVICIO TÉCNICO</option>
+                        <option value="repuestos"><FaTools /> CONSULTA DE REPUESTOS</option>
+                        <option value="taller"><FaCogs /> AGENDAR SERVICIO TÉCNICO</option>
                         <option value="garantia">🛡️ RECLAMO DE GARANTÍA</option>
                         <option value="mayor">📦 VENTA AL MAYOR</option>
                         <option value="otro">❓ OTRA CONSULTA</option>
@@ -485,16 +525,16 @@ const Contacto = () => {
       <section className="ctc-cta">
         <div className="container">
           <div className="cta-box">
-            <div className="cta-badge">🏍️ RR BIKER</div>
+            <div className="cta-badge"><FaMotorcycle /> RR BIKER</div>
             <h2>¿PREFIERES VISITARNOS?</h2>
             <p>Estamos en Guacara listos para recibirte. Parking privado disponible.</p>
             <div className="cta-actions">
-              <a href="https://maps.google.com" target="_blank" rel="noopener noreferrer" className="cta-btn primary">
-                <span>📍</span>
+              <a href="https://www.google.com/maps/dir/?api=1&destination=10.229223,-67.865707" target="_blank" rel="noopener noreferrer" className="cta-btn primary">
+                <span><FaMapMarkerAlt /></span>
                 CÓMO LLEGAR
               </a>
               <a href="tel:+582411234567" className="cta-btn secondary">
-                <span>📞</span>
+                <span><FaPhone /></span>
                 LLAMAR AHORA
               </a>
             </div>

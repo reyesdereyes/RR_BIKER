@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import  supabase  from '../conf/supabase';
+import { useNavigate } from 'react-router-dom'; // AGREGADO para navegación
+import supabase from '../conf/supabase';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import { FaMotorcycle, FaExclamationTriangle, FaArrowRight, FaShoppingCart } from 'react-icons/fa';
 import '../css/producto.css';
 
 const Productos = () => {
@@ -13,6 +15,8 @@ const Productos = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [totalCount, setTotalCount] = useState(0);
+  
+  const navigate = useNavigate(); // AGREGADO para navegación
 
   // Suscripción realtime
   useEffect(() => {
@@ -39,7 +43,7 @@ const Productos = () => {
 
   const loadCategorias = async () => {
     try {
-      // Obtener categorías activas
+      // MODIFICADO: Usar tu tabla simple de categorias
       const { data: categoriasData, error: catError } = await supabase
         .from('categorias')
         .select('*')
@@ -49,15 +53,6 @@ const Productos = () => {
       if (catError) throw catError;
 
       // Contar productos por categoría
-      const { data: productosCount, error: countError } = await supabase
-        .from('productos')
-        .select('categoria_id', { count: 'exact' })
-        .eq('activo', true);
-
-      if (countError) throw countError;
-
-      // Contar productos por cada categoría
-      const conteos = {};
       const { data: allProductos, error: prodError } = await supabase
         .from('productos')
         .select('categoria_id')
@@ -65,6 +60,8 @@ const Productos = () => {
 
       if (prodError) throw prodError;
 
+      // Contar productos por cada categoría
+      const conteos = {};
       allProductos.forEach(prod => {
         conteos[prod.categoria_id] = (conteos[prod.categoria_id] || 0) + 1;
       });
@@ -75,16 +72,18 @@ const Productos = () => {
         { 
           id: 'todos', 
           nombre: 'TODOS', 
-          icono: '🏍️', 
+          icono: <FaMotorcycle />, 
           slug: 'todos', 
-          count: totalProductos 
+          count: totalProductos,
+          imagen: null
         },
         ...categoriasData.map(cat => ({
-          id: cat.slug,
+          id: cat.id, // MODIFICADO: usar id numérico
           nombre: cat.nombre.toUpperCase(),
-          icono: cat.icono || '🏍️',
+          icono: <FaMotorcycle />,
           slug: cat.slug,
-          count: conteos[cat.id] || 0
+          count: conteos[cat.id] || 0,
+          imagen: cat.imagen // AGREGADO: imagen de categoría
         }))
       ];
 
@@ -96,68 +95,47 @@ const Productos = () => {
     }
   };
 
-  // Cargar productos - CORREGIDO para usar tablas reales
-  const loadProductos = async (categoriaSlug) => {
+  // Cargar productos - MODIFICADO para tabla simple
+  const loadProductos = async (categoriaId) => {
     setLoading(true);
     setError(null);
 
     try {
-      // Construir query base con joins a categorías, marcas y stats
+      // MODIFICADO: Query simplificado para tu estructura de tablas
       let query = supabase
         .from('productos')
         .select(`
           *,
-          categorias!inner(nombre, slug, icono),
-          marcas(nombre, logo),
-          producto_stats(rating, total_reviews, total_vistas, total_ventas)
+          categorias(nombre, slug, imagen)
         `)
         .eq('activo', true)
-        .order('destacado', { ascending: false })
-        .order('orden_destacado', { ascending: true });
+        .order('created_at', { ascending: false });
 
       // Filtrar por categoría si no es 'todos'
-      if (categoriaSlug !== 'todos') {
-        query = query.eq('categorias.slug', categoriaSlug);
+      if (categoriaId !== 'todos') {
+        query = query.eq('categoria_id', categoriaId); // MODIFICADO: filtrar por ID numérico
       }
 
       const { data, error } = await query;
 
       if (error) throw error;
 
-      console.log('Productos cargados:', data); // Debug
+      console.log('Productos cargados:', data);
 
       const productosFormateados = data.map(prod => {
-        // Construir URL de imagen si existe
-        let imagenUrl = null;
-        if (prod.imagen_principal) {
-          const { data: urlData } = supabase
-            .storage
-            .from('productos')
-            .getPublicUrl(prod.imagen_principal);
-          imagenUrl = urlData?.publicUrl || null;
-        }
-
         return {
           id: prod.id,
           nombre: prod.nombre,
+          descripcion: prod.descripcion, // AGREGADO
           categoria: prod.categorias?.slug,
           categoriaNombre: prod.categorias?.nombre,
-          categoriaIcono: prod.categorias?.icono,
+          categoriaId: prod.categoria_id, // AGREGADO para navegación
           precio: parseFloat(prod.precio) || 0,
-          precioAntes: prod.precio_anterior ? parseFloat(prod.precio_anterior) : null,
-          imagen: prod.categorias?.icono || '🏍️',
-          imagenReal: prod.imagen_principal,
-          imagenUrl: imagenUrl,
-          badge: prod.badge,
-          rating: parseFloat(prod.producto_stats?.[0]?.rating) || 5.0,
-          reviews: prod.producto_stats?.[0]?.total_reviews || 0,
-          specs: prod.especificaciones || [],
+          // MODIFICADO: usar imagen directa de la tabla
+          imagenUrl: prod.imagen || null,
           stock: prod.stock || 0,
-          marca: prod.marcas?.nombre || null,
-          marcaLogo: prod.marcas?.logo || null,
-          slug: prod.slug,
-          destacado: prod.destacado,
-          sku: prod.sku
+          sku: prod.sku || null,
+          slug: prod.id.toString() // AGREGADO para URL amigable
         };
       });
 
@@ -177,50 +155,35 @@ const Productos = () => {
     }
   }, [activeCategory, categorias]);
 
+  // MODIFICADO: Navegar a página de categoría en lugar de filtrar local
   const handleCategoryChange = (categoryId) => {
-    setActiveCategory(categoryId);
-    document.querySelector('.products-showcase')?.scrollIntoView({ 
-      behavior: 'smooth', 
-      block: 'start' 
-    });
-  };
-
-  // Función para subir imágenes
-  const subirImagen = async (file, productoId) => {
-    try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${productoId}-${Date.now()}.${fileExt}`;
-      
-      const { data, error } = await supabase
-        .storage
-        .from('productos')
-        .upload(`imagenes/${fileName}`, file);
-
-      if (error) throw error;
-      
-      // Actualizar producto con nueva imagen
-      await supabase
-        .from('productos')
-        .update({ imagen_principal: data.path })
-        .eq('id', productoId);
-        
-      return data.path;
-    } catch (err) {
-      console.error('Error subiendo imagen:', err);
-      throw err;
+    if (categoryId === 'todos') {
+      setActiveCategory('todos');
+      loadProductos('todos');
+    } else {
+      // Navegar a página de categoría específica
+      const categoria = categorias.find(c => c.id === categoryId);
+      if (categoria) {
+        navigate(`/productos-categoria/${categoria.slug}`);
+      }
     }
   };
 
+  // AGREGADO: Función para ver detalle de producto
+  const handleProductClick = (producto) => {
+    navigate(`/producto/${producto.slug || producto.id}`);
+  };
+
+  // AGREGADO: Función para agregar al carrito (sin navegar)
+  const handleAddToCart = (e, producto) => {
+    e.stopPropagation(); // Evitar que se abra el producto
+    // Aquí tu lógica de carrito
+    console.log('Agregado al carrito:', producto);
+  };
+
   const renderStars = (rating) => {
-    const fullStars = Math.floor(rating);
-    const hasHalfStar = rating % 1 >= 0.5;
-    return (
-      <>
-        {'★'.repeat(fullStars)}
-        {hasHalfStar && '½'}
-        {'☆'.repeat(5 - fullStars - (hasHalfStar ? 1 : 0))}
-      </>
-    );
+    // Simplificado ya que no tienes rating en tu tabla
+    return '★★★★★';
   };
 
   if (error) {
@@ -228,7 +191,7 @@ const Productos = () => {
       <>
         <Header />
         <div className="error-container" style={{ padding: '100px 20px', textAlign: 'center' }}>
-          <h2>😕 {error}</h2>
+          <h2><FaExclamationTriangle /> {error}</h2>
           <button 
             onClick={() => {
               loadCategorias();
@@ -256,7 +219,7 @@ const Productos = () => {
           <div className="hero-glow"></div>
         </div>
         <div className="container prod-hero-content">
-          <div className="hero-badge">🏍️ CATÁLOGO PREMIUM</div>
+          <div className="hero-badge"><FaMotorcycle /> CATÁLOGO PREMIUM</div>
           <h1 className="prod-hero-title">
             <span className="title-dark">REPUESTOS &</span>
             <span className="title-red">ACCESORIOS</span>
@@ -271,8 +234,8 @@ const Productos = () => {
               <span className="h-label">PRODUCTOS</span>
             </div>
             <div className="h-stat">
-              <span className="h-num">50+</span>
-              <span className="h-label">MARCAS</span>
+              <span className="h-num">{categorias.length - 1}+</span>
+              <span className="h-label">CATEGORÍAS</span>
             </div>
             <div className="h-stat">
               <span className="h-num">24H</span>
@@ -299,7 +262,16 @@ const Productos = () => {
                 disabled={loading}
               >
                 <div className="cat-icon-box">
-                  <span className="cat-emoji">{cat.icono}</span>
+                  {/* MODIFICADO: Mostrar imagen de categoría si existe */}
+                  {cat.imagen ? (
+                    <img 
+                      src={cat.imagen} 
+                      alt={cat.nombre}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '12px' }}
+                    />
+                  ) : (
+                    <span className="cat-emoji">{cat.icono}</span>
+                  )}
                   <div className="cat-glow"></div>
                 </div>
                 <div className="cat-info">
@@ -333,8 +305,7 @@ const Productos = () => {
                 <option>ORDENAR POR</option>
                 <option>Precio: Menor a Mayor</option>
                 <option>Precio: Mayor a Menor</option>
-                <option>Más Vendidos</option>
-                <option>Mejor Valorados</option>
+                <option>Más recientes</option>
               </select>
             </div>
           </div>
@@ -354,12 +325,9 @@ const Productos = () => {
                   onMouseEnter={() => setHoveredProduct(prod.id)}
                   onMouseLeave={() => setHoveredProduct(null)}
                   style={{ animationDelay: `${idx * 0.1}s` }}
+                  onClick={() => handleProductClick(prod)} // AGREGADO: click para ver detalle
                 >
-                  {prod.badge && (
-                    <div className={`prod-badge ${prod.badge.toLowerCase().replace(/\s+/g, '-')}`}>
-                      {prod.badge}
-                    </div>
-                  )}
+                  {/* REMOVIDO: badge ya que no está en tu tabla */}
 
                   <div className="prod-image">
                     <div className="image-frame">
@@ -375,11 +343,11 @@ const Productos = () => {
                         />
                       ) : (
                         <span className="prod-emoji" style={{ fontSize: '4rem' }}>
-                          {prod.categoriaIcono || prod.imagen}
+                          <FaMotorcycle />
                         </span>
                       )}
                       <div className="image-overlay">
-                        <button className="quick-view">VISTA RÁPIDA</button>
+                        <button className="quick-view">VER DETALLE</button>
                       </div>
                     </div>
                     <div className="stock-indicator">
@@ -390,32 +358,47 @@ const Productos = () => {
 
                   <div className="prod-info">
                     <div className="prod-rating">
-                      <span className="stars">{renderStars(prod.rating)}</span>
-                      <span className="rating-num">{prod.rating}</span>
-                      <span className="reviews">({prod.reviews})</span>
+                      <span className="stars">{renderStars()}</span>
+                      {/* Simplificado sin rating numérico */}
                     </div>
                     
-                    {prod.marca && (
-                      <span className="prod-brand">{prod.marca}</span>
+                    {/* AGREGADO: SKU si existe */}
+                    {prod.sku && (
+                      <span className="prod-brand">SKU: {prod.sku}</span>
                     )}
                     
                     <h4 className="prod-name">{prod.nombre}</h4>
                     
+                    {/* AGREGADO: Descripción corta */}
+                    {prod.descripcion && (
+                      <p style={{ 
+                        color: 'rgba(255,255,255,0.6)', 
+                        fontSize: '0.85rem', 
+                        marginBottom: '10px',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden'
+                      }}>
+                        {prod.descripcion}
+                      </p>
+                    )}
+                    
                     <div className="prod-specs">
-                      {Array.isArray(prod.specs) && prod.specs.map((spec, i) => (
-                        <span key={i} className="spec-tag">{spec}</span>
-                      ))}
+                      {/* Simplificado sin specs */}
+                      <span className="spec-tag">{prod.categoriaNombre}</span>
                     </div>
 
                     <div className="prod-footer">
                       <div className="price-block">
-                        {prod.precioAntes && (
-                          <span className="price-old">${prod.precioAntes}</span>
-                        )}
                         <span className="price-current">${prod.precio}</span>
                       </div>
-                      <button className="btn-add-cart">
-                        <span className="cart-icon">🛒</span>
+                      {/* MODIFICADO: Agregar al carrito sin navegar */}
+                      <button 
+                        className="btn-add-cart"
+                        onClick={(e) => handleAddToCart(e, prod)}
+                      >
+                        <span className="cart-icon"><FaShoppingCart /></span>
                         <span className="add-text">AGREGAR</span>
                       </button>
                     </div>
@@ -442,9 +425,8 @@ const Productos = () => {
                 <span className="page-num">2</span>
                 <span className="page-num">3</span>
                 <span className="page-dots">...</span>
-                <span className="page-num">12</span>
               </div>
-              <button className="page-btn next">SIGUIENTE →</button>
+              <button className="page-btn next">SIGUIENTE <FaArrowRight /></button>
             </div>
           )}
         </div>

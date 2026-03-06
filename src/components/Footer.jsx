@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { FaFacebookF, FaInstagram, FaTiktok, FaWhatsapp, FaMapMarkerAlt, FaPhoneAlt, FaEnvelope, FaClock, FaHome, FaWrench, FaCog, FaMotorcycle, FaArrowRight, FaFire, FaCreditCard, FaMoneyBillAlt, FaMobileAlt, FaLightbulb, FaGift } from 'react-icons/fa';
+import logo from '../assets/logo.svg';
 import '../css/footer.css';
 
 const Footer = () => {
@@ -18,24 +20,24 @@ const Footer = () => {
   };
 
   const navLinks = [
-    { to: "/", label: "INICIO", icon: "🏠" },
-    { to: "/productos", label: "REPUESTOS", icon: "🔧" },
-    { to: "/servicios", label: "TALLER", icon: "⚙️" },
-    { to: "/contacto", label: "CONTACTO", icon: "📍" }
+    { to: "/", label: "INICIO", icon: <FaHome /> },
+    { to: "/productos", label: "REPUESTOS", icon: <FaWrench /> },
+    { to: "/servicios", label: "TALLER", icon: <FaCog /> },
+    { to: "/contacto", label: "CONTACTO", icon: <FaMapMarkerAlt /> }
   ];
 
   const contactInfo = [
-    { icon: "📍", label: "DIRECCIÓN", value: "Calle Principal, Guacara, Carabobo" },
-    { icon: "📞", label: "TELÉFONO", value: "+58 412-1234567", link: "tel:+584121234567" },
-    { icon: "✉️", label: "EMAIL", value: "ventas@rrbiker.com", link: "mailto:ventas@rrbiker.com" },
-    { icon: "🕒", label: "HORARIO", value: "Lun-Vie: 8am - 6pm | Sáb: 9am - 2pm" }
+    { icon: <FaMapMarkerAlt />, label: "DIRECCIÓN", value: "Calle Principal, Guacara, Carabobo" },
+    { icon: <FaPhoneAlt />, label: "TELÉFONO", value: "+58 412-1234567", link: "tel:+584121234567" },
+    { icon: <FaEnvelope />, label: "EMAIL", value: "ventas.rrbiker@gmail.com", link: "mailto:ventas.rrbiker@gmail.com" },
+    { icon: <FaClock />, label: "HORARIO", value: "Lun-Vie: 8am - 6pm | Sáb: 9am - 2pm" }
   ];
 
   const socialLinks = [
-    { icon: "📘", label: "Facebook", url: "#" },
-    { icon: "📸", label: "Instagram", url: "#" },
-    { icon: "🎵", label: "TikTok", url: "#" },
-    { icon: "💬", label: "WhatsApp", url: "https://wa.me/584121234567" }
+    { icon: <FaFacebookF />, label: "Facebook", url: "https://facebook.com/RRBIKER" },
+    { icon: <FaInstagram />, label: "Instagram", url: "https://instagram.com/rrodriguez.biker" },
+    { icon: <FaTiktok />, label: "TikTok", url: "https://www.tiktok.com/@RRBIKER_" },
+    { icon: <FaWhatsapp />, label: "WhatsApp", url: "https://wa.me/584121234567" }
   ];
 
   return (
@@ -44,7 +46,7 @@ const Footer = () => {
       <div className="ftr-top-bar">
         <div className="ftr-container">
           <div className="ftr-top-content">
-            <div className="ftr-top-badge">🏍️ DESDE 2009</div>
+            <div className="ftr-top-badge"><FaMotorcycle /> DESDE 2009</div>
             <div className="ftr-top-text">LA PASIÓN POR LAS DOS RUEDAS</div>
             <div className="ftr-top-stats">
               <span>15+ AÑOS</span>
@@ -62,15 +64,13 @@ const Footer = () => {
         <div className="ftr-container">
           <div className="ftr-grid">
             
-            {/* BRAND COLUMN */}
+            {/* BRAND COLUMN - LOGO MEJORADO */}
             <div className="ftr-brand">
               <div className="ftr-brand-header">
-                <div className="ftr-logo">
-                  <span className="ftr-logo-icon">🏍️</span>
-                  <div className="ftr-logo-text">
-                    <span className="ftr-logo-main">RR</span>
-                    <span className="ftr-logo-accent">BIKER</span>
-                  </div>
+                <div className="ftr-logo-box">
+                  <div className="ftr-logo-glow"></div>
+                  <img src={logo} alt="RR Biker" className="ftr-logo-img" />
+                  <div className="ftr-logo-ring"></div>
                 </div>
                 <div className="ftr-logo-tag">GUACARA • VENEZUELA</div>
               </div>
@@ -108,7 +108,7 @@ const Footer = () => {
                     <Link to={link.to} className="ftr-nav-link">
                       <span className="ftr-link-icon">{link.icon}</span>
                       <span className="ftr-link-text">{link.label}</span>
-                      <span className="ftr-link-arrow">→</span>
+                      <span className="ftr-link-arrow"><FaArrowRight /></span>
                     </Link>
                   </li>
                 ))}
@@ -150,10 +150,10 @@ const Footer = () => {
                   Únete a nuestro club exclusivo y recibe:
                 </p>
                 <ul className="ftr-newsletter-benefits">
-                  <li>🔥 Ofertas flash antes que nadie</li>
-                  <li>🏁 Eventos y track days</li>
-                  <li>💡 Tips de mantenimiento</li>
-                  <li>🎁 Sorteos mensuales</li>
+                  <li><FaFire /> Ofertas flash antes que nadie</li>
+                  <li><FaMotorcycle /> Eventos y track days</li>
+                  <li><FaLightbulb /> Tips de mantenimiento</li>
+                  <li><FaGift /> Sorteos mensuales</li>
                 </ul>
 
                 {subscribed ? (
@@ -175,7 +175,7 @@ const Footer = () => {
                     </div>
                     <button type="submit" className="ftr-subscribe-btn">
                       <span className="ftr-btn-text">UNIRME</span>
-                      <span className="ftr-btn-icon">→</span>
+                      <span className="ftr-btn-icon"><FaArrowRight /></span>
                     </button>
                   </form>
                 )}
@@ -218,9 +218,9 @@ const Footer = () => {
             
             <div className="ftr-bottom-center">
               <div className="ftr-payment">
-                <span className="ftr-payment-icon">💳</span>
-                <span className="ftr-payment-icon">💰</span>
-                <span className="ftr-payment-icon">📱</span>
+                <span className="ftr-payment-icon"><FaCreditCard /></span>
+                <span className="ftr-payment-icon"><FaMoneyBillAlt /></span>
+                <span className="ftr-payment-icon"><FaMobileAlt /></span>
                 <span className="ftr-payment-text">PAGO SEGURO</span>
               </div>
             </div>

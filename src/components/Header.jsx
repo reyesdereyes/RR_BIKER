@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
+import { FaMotorcycle, FaMapMarkerAlt, FaEnvelope, FaSearch, FaShoppingCart, FaBolt } from "react-icons/fa";
+import logo from "../assets/logo.svg";
 import "../css/Header.css";
 
 const HeaderBar = () => {
-  // ===== ESTADOS BÁSICOS =====
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [cartPulse, setCartPulse] = useState(false);
@@ -11,7 +12,6 @@ const HeaderBar = () => {
   const [cartCount, setCartCount] = useState(0);
   const [cartItems, setCartItems] = useState([]);
 
-  // ===== BUSCADOR =====
   const [searchQuery, setSearchQuery] = useState("");
   const [suggestions] = useState([
     "Casco full face", "Guantes racing", "Batería lithium", "Neumático sport", 
@@ -20,16 +20,13 @@ const HeaderBar = () => {
   const [filtered, setFiltered] = useState([]);
   const [activeIndex, setActiveIndex] = useState(-1);
 
-  // ===== NAV HIGHLIGHT =====
   const [highlightStyle, setHighlightStyle] = useState({ width: 0, left: 0, visible: false });
 
-  // ===== REFS =====
   const wrapperRef = useRef(null);
   const searchRef = useRef(null);
   const navListRef = useRef(null);
   const linkRefs = useRef({});
 
-  // ===== CARRITO PERSISTENTE =====
   useEffect(() => {
     const savedCart = localStorage.getItem('rrbikerCart');
     if (savedCart) {
@@ -44,14 +41,12 @@ const HeaderBar = () => {
     setCartCount(cartItems.reduce((sum, item) => sum + item.quantity, 0));
   }, [cartItems]);
 
-  // ===== SCROLL DETECTION =====
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 50);
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // ===== CLICK OUTSIDE =====
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
@@ -64,7 +59,6 @@ const HeaderBar = () => {
     return () => window.removeEventListener("click", handleClickOutside);
   }, []);
 
-  // ===== NAV HIGHLIGHT =====
   const moveHighlightToKey = useCallback((key) => {
     const navList = navListRef.current;
     const linkEl = linkRefs.current[key];
@@ -83,7 +77,6 @@ const HeaderBar = () => {
     return () => clearTimeout(t);
   }, [moveHighlightToKey]);
 
-  // ===== BUSCADOR =====
   const onSearchChange = (value) => {
     setSearchQuery(value);
     if (!value) {
@@ -119,7 +112,9 @@ const HeaderBar = () => {
     { key: "inicio", label: "INICIO", to: "/" },
     { key: "productos", label: "PRODUCTOS", to: "/productos" },
     { key: "servicio", label: "SERVICIO", to: "/servicio" },
-    { key: "contacto", label: "CONTACTO", to: "/contacto" }
+    { key: "contacto", label: "CONTACTO", to: "/contacto" },
+    // enlace rápido a la zona de administración
+    { key: "login", label: "ADMIN", to: "/login" }
   ];
 
   return (
@@ -128,9 +123,10 @@ const HeaderBar = () => {
         {/* BARRA SUPERIOR */}
         <div className="hdr-top-bar">
           <div className="container">
-            <span className="top-text">🏍️ ESPECIALISTAS EN MOTOS DE ALTA CILINDRADA</span>
-            <span className="top-text">📍 GUACARA, CARABOBO</span>
-            <span className="top-text highlight">⚡ SERVICIO 24H</span>
+            <span className="top-text"><FaMotorcycle /> ESPECIALISTAS EN MOTOS DE ALTA CILINDRADA</span>
+            <span className="top-text"><FaMapMarkerAlt /> GUACARA, CARABOBO</span>
+            <span className="top-text"><FaEnvelope /> ventas.rrbiker@gmail.com</span>
+            <span className="top-text highlight"><FaBolt /> SERVICIO 24H</span>
           </div>
         </div>
 
@@ -138,15 +134,13 @@ const HeaderBar = () => {
         <div className="hdr-main">
           <div className="container hdr-inner">
             
-            {/* LOGO */}
+            {/* LOGO MEJORADO */}
             <div className="hdr-logo-area">
               <Link to="/" className="hdr-logo-link">
                 <div className="logo-box">
-                  <span className="logo-icon">🏍️</span>
-                  <div className="logo-text">
-                    <span className="logo-main">RR BIKER</span>
-                    <span className="logo-sub">SINCE 2009</span>
-                  </div>
+                  <div className="logo-glow"></div>
+                  <img src={logo} alt="RR Biker" className="logo-img" loading="eager" />
+                  <div className="logo-ring"></div>
                 </div>
               </Link>
             </div>
@@ -198,10 +192,7 @@ const HeaderBar = () => {
                   placeholder="BUSCAR REPUESTOS..."
                 />
                 <button className="search-btn" aria-label="Buscar">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <path d="m21 21-4.35-4.35"></path>
-                  </svg>
+                  <FaSearch />
                 </button>
                 
                 {filtered.length > 0 && (
@@ -216,7 +207,7 @@ const HeaderBar = () => {
                           setFiltered([]);
                         }}
                       >
-                        <span className="item-icon">🔍</span>
+                        <span className="item-icon"><FaSearch /></span>
                         <span className="item-text">{s}</span>
                       </li>
                     ))}
@@ -236,11 +227,7 @@ const HeaderBar = () => {
                 aria-label="Carrito"
               >
                 <div className="cart-icon-wrap">
-                  <svg className="cart-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
-                    <path d="M3 6h18"></path>
-                    <path d="M16 10a4 4 0 0 1-8 0"></path>
-                  </svg>
+                  <FaShoppingCart />
                   {cartCount > 0 && (
                     <span className={`cart-count ${cartPulse ? "pulse" : ""}`}>
                       {cartCount}
@@ -255,7 +242,7 @@ const HeaderBar = () => {
                 <div className={`mini-cart-panel ${cartCount === 0 ? "empty" : ""}`}>
                   {cartCount === 0 ? (
                     <div className="cart-empty-state">
-                      <div className="empty-icon">🛒</div>
+                      <div className="empty-icon"><FaShoppingCart /></div>
                       <h4>TU CARRITO ESTÁ VACÍO</h4>
                       <p>Explora nuestros productos premium</p>
                       <Link to="/productos" className="btn-cart-action" onClick={() => setCartOpen(false)}>
@@ -269,7 +256,7 @@ const HeaderBar = () => {
                         <span className="cart-items-count">{cartCount} ITEMS</span>
                       </div>
                       <Link to="/carrito" className="btn-cart-action primary" onClick={() => setCartOpen(false)}>
-                        VER CARRITO COMPLETO →
+                        VER CARRITO COMPLETO <FaArrowRight />
                       </Link>
                     </div>
                   )}
@@ -296,7 +283,6 @@ const HeaderBar = () => {
         </div>
       </header>
 
-      {/* OVERLAY MÓVIL */}
       {open && <div className="hdr-overlay" onClick={() => setOpen(false)}></div>}
     </>
   );

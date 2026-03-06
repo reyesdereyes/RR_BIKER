@@ -2,7 +2,7 @@
    FOOTER RR BIKER - NAMESPACE FTR-
    ============================================ */
 
-/* Variables locales (no :root para evitar conflictos) */
+/* Variables locales */
 .ftr-root {
   --ftr-red: #f60c14;
   --ftr-red-dark: #c00910;
@@ -103,7 +103,7 @@
   gap: 3rem;
 }
 
-/* ===== BRAND COLUMN ===== */
+/* ===== BRAND COLUMN - LOGO MEJORADO ===== */
 .ftr-brand {
   display: flex;
   flex-direction: column;
@@ -113,45 +113,82 @@
 .ftr-brand-header {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
 }
 
-.ftr-logo {
+.ftr-logo-box {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 1rem;
+  justify-content: center;
+  padding: 0.75rem;
+  border-radius: 12px;
+  transition: all 0.3s ease;
 }
 
-.ftr-logo-icon {
-  font-size: 2.5rem;
-  filter: drop-shadow(0 0 10px rgba(246, 12, 20, 0.5));
+/* Glow effect */
+.ftr-logo-glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, rgba(246, 12, 20, 0.2) 0%, transparent 70%);
+  filter: blur(25px);
+  opacity: 0.6;
+  animation: ftrLogoPulse 4s ease-in-out infinite;
 }
 
-.ftr-logo-text {
-  display: flex;
-  flex-direction: column;
-  line-height: 1;
+/* Logo image */
+.ftr-logo-img {
+  display: block;
+  height: 100px;
+  width: auto;
+  position: relative;
+  z-index: 2;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4));
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  object-fit: contain;
 }
 
-.ftr-logo-main {
-  color: var(--ftr-white);
-  font-size: 2.5rem;
-  font-weight: 900;
-  letter-spacing: -2px;
+.ftr-logo-box:hover .ftr-logo-img {
+  transform: scale(1.08) translateY(-3px);
+  filter: drop-shadow(0 12px 20px rgba(246, 12, 20, 0.25));
 }
 
-.ftr-logo-accent {
-  color: var(--ftr-red);
-  font-size: 1.5rem;
-  font-weight: 800;
-  letter-spacing: 4px;
+/* Ring decoration */
+.ftr-logo-ring {
+  position: absolute;
+  inset: -8px;
+  border: 2px solid transparent;
+  border-radius: 16px;
+  opacity: 0;
+  transition: all 0.3s ease;
 }
 
+.ftr-logo-box:hover .ftr-logo-ring {
+  border-color: rgba(246, 12, 20, 0.4);
+  opacity: 1;
+  animation: ftrLogoRotate 8s linear infinite;
+}
+
+@keyframes ftrLogoPulse {
+  0%, 100% { transform: scale(1); opacity: 0.4; }
+  50% { transform: scale(1.15); opacity: 0.7; }
+}
+
+@keyframes ftrLogoRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Tag below logo */
 .ftr-logo-tag {
-  color: var(--ftr-gray-light);
+  color: var(--ftr-red);
   font-size: 0.75rem;
-  letter-spacing: 3px;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: 4px;
+  margin-top: 0.5rem;
+  opacity: 0.8;
 }
 
 .ftr-brand-desc {
@@ -586,6 +623,10 @@
   .ftr-top-text {
     order: -1;
   }
+  
+  .ftr-logo-img {
+    height: 85px;
+  }
 }
 
 @media (max-width: 768px) {
@@ -615,6 +656,19 @@
   .ftr-subscribe-btn {
     justify-content: center;
   }
+  
+  .ftr-brand-header {
+    align-items: center;
+    text-align: center;
+  }
+  
+  .ftr-logo-img {
+    height: 80px;
+  }
+  
+  .ftr-logo-box {
+    padding: 0.5rem;
+  }
 }
 
 @media (max-width: 480px) {
@@ -622,12 +676,13 @@
     padding: 2rem 0;
   }
   
-  .ftr-logo-main {
-    font-size: 2rem;
+  .ftr-logo-img {
+    height: 70px;
   }
   
-  .ftr-logo-accent {
-    font-size: 1.2rem;
+  .ftr-logo-tag {
+    font-size: 0.65rem;
+    letter-spacing: 3px;
   }
   
   .ftr-top-stats {

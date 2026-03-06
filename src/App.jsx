@@ -5,6 +5,10 @@ import Inicio from './pages/Inicio';
 import Productos from './pages/Productos';
 import Contacto from './pages/Contacto';
 import Servicio from './pages/Servicio';
+import Login from './pages/Login';
+import Admin from './pages/Admin';
+import ProductosCategoria from './pages/ProductosCategoria';
+
 
 
 function App() {
@@ -19,8 +23,12 @@ function App() {
         <Route path='/catalogo' element={<Navigate to="/productos" replace />} />
         <Route path='/contacto' element={<Contacto />} />
         <Route path='/servicio' element={<Servicio />} />
+        <Route path='/productos-categoria' element={<ProductosCategoria />} />
         {/* Alias plural para evitar errores de navegación */}
         <Route path='/servicios' element={<Navigate to="/servicio" replace />} />
+        {/* auth routes */}
+        <Route path='/login' element={<Login />} />
+        <Route path='/admin' element={<Admin />} />
       </Routes>
     </Router>
   )

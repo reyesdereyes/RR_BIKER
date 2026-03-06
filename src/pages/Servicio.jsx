@@ -1,6 +1,24 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import { 
+  FaTools, 
+  FaBolt, 
+  FaCircle, 
+  FaPalette, 
+  FaCogs, 
+  FaBatteryFull, 
+  FaClock, 
+  FaShieldAlt, 
+  FaIndustry, 
+  FaUserCog, 
+  FaChartLine, 
+  FaClipboardList, 
+  FaArrowRight, 
+  FaFlagCheckered,
+  FaPhone,        // ← AGREGADO
+  FaFire          // ← AGREGADO (faltaba también)
+} from 'react-icons/fa';
 import "../css/servicio.css";
 
 const Servicio = () => {
@@ -20,7 +38,7 @@ const Servicio = () => {
     {
       id: 1,
       codigo: "01",
-      icono: "🔧",
+      icono: <FaTools />,
       titulo: "Mantenimiento General",
       descripcion: "Servicio completo de revisión y mantenimiento preventivo para todas las marcas y modelos de motocicletas.",
       caracteristicas: ["Cambio de aceite sintético", "Revisión de frenos ABS", "Ajuste de cadena KMC", "Revisión eléctrica"],
@@ -32,7 +50,7 @@ const Servicio = () => {
     {
       id: 2,
       codigo: "02",
-      icono: "⚡",
+      icono: <FaBolt />,
       titulo: "Reparación de Motor",
       descripcion: "Diagnóstico y reparación especializada de motores 2T y 4T con garantía extendida.",
       caracteristicas: ["Rectificación de cilindros", "Cambio de anillos OEM", "Revisión de culata", "Calibración de válvulas"],
@@ -44,7 +62,7 @@ const Servicio = () => {
     {
       id: 3,
       codigo: "03",
-      icono: "🛞",
+      icono: <FaCircle />,
       titulo: "Cambio de Cauchos",
       descripcion: "Venta e instalación de neumáticos de alta gama con balanceo computarizado.",
       caracteristicas: ["Michelin Power RS", "Pirelli Diablo Rosso", "Dunlop SportSmart", "Balanceo digital"],
@@ -56,7 +74,7 @@ const Servicio = () => {
     {
       id: 4,
       codigo: "04",
-      icono: "🎨",
+      icono: <FaPalette />,
       titulo: "Pintura y Body",
       descripcion: "Restauración profesional con cabina de pintura controlada y personalización total.",
       caracteristicas: ["Pintura poliuretano", "Soldadura TIG/MIG", "Enderezado chasis", "Aerografía"],
@@ -68,7 +86,7 @@ const Servicio = () => {
     {
       id: 5,
       codigo: "05",
-      icono: "⚙️",
+      icono: <FaCogs />,
       titulo: "Sistema de Transmisión",
       descripcion: "Reemplazo completo de kit de arrastre con componentes de competición.",
       caracteristicas: ["Piñón Renthal", "Corona AFAM", "Cadena RK X-Ring", "Lubricación cerámica"],
@@ -80,7 +98,7 @@ const Servicio = () => {
     {
       id: 6,
       codigo: "06",
-      icono: "🔋",
+      icono: <FaBatteryFull />,
       titulo: "Sistema Eléctrico",
       descripcion: "Diagnóstico con scanner profesional y solución de fallas complejas.",
       caracteristicas: ["Baterías Yuasa", "Reguladores Mosfet", "Arranques de alto torque", "Luces LED"],
@@ -99,17 +117,17 @@ const Servicio = () => {
   ];
 
   const garantias = [
-    { icono: "🏆", titulo: "GARANTÍA REAL", desc: "Hasta 1 año en mano de obra" },
-    { icono: "⚙️", titulo: "REPUESTOS OEM", desc: "Originales y alternativas premium" },
-    { icono: "🔍", titulo: "DIAGNÓSTICO FREE", desc: "Sin compromiso de compra" },
-    { icono: "⏱️", titulo: "ENTREGA PUNTUAL", desc: "Cumplimos o devolvemos" }
+    { icono: <FaShieldAlt />, titulo: "GARANTÍA REAL", desc: "Hasta 1 año en mano de obra" },
+    { icono: <FaCogs />, titulo: "REPUESTOS OEM", desc: "Originales y alternativas premium" },
+    { icono: <FaClipboardList />, titulo: "DIAGNÓSTICO FREE", desc: "Sin compromiso de compra" },
+    { icono: <FaClock />, titulo: "ENTREGA PUNTUAL", desc: "Cumplimos o devolvemos" }
   ];
 
   const tallerFeatures = [
-    { icon: "🏭", title: "INSTALACIONES", desc: "500m² equipados" },
-    { icon: "🔧", title: "EQUIPAMIENTO", desc: "Herramientas Snap-on" },
-    { icon: "👨‍🔧", title: "PERSONAL", desc: "Mecánicos certificados" },
-    { icon: "📊", title: "TECNOLOGÍA", desc: "Diagnóstico computarizado" }
+    { icon: <FaIndustry />, title: "INSTALACIONES", desc: "500m² equipados" },
+    { icon: <FaTools />, title: "EQUIPAMIENTO", desc: "Herramientas Snap-on" },
+    { icon: <FaUserCog />, title: "PERSONAL", desc: "Mecánicos certificados" },
+    { icon: <FaChartLine />, title: "TECNOLOGÍA", desc: "Diagnóstico computarizado" }
   ];
 
   return (
@@ -124,7 +142,7 @@ const Servicio = () => {
         </div>
         
         <div className="container srv-hero-content">
-          <div className="srv-hero-badge">🏁 SERVICIO TÉCNICO</div>
+          <div className="srv-hero-badge"><FaFlagCheckered /> SERVICIO TÉCNICO</div>
           
           <h1 className="srv-hero-title">
             <span className="srv-title-line">TALLER DE</span>
@@ -142,7 +160,7 @@ const Servicio = () => {
               <span className="srv-btn-arrow">↓</span>
             </a>
             <a href="#cotizar" className="srv-btn-secondary">
-              <span className="srv-btn-icon">📞</span>
+              <span className="srv-btn-icon"><FaPhone /></span>
               <span>EMERGENCIA 24H</span>
             </a>
           </div>
@@ -150,10 +168,10 @@ const Servicio = () => {
           <div className="srv-hero-visual">
             <div className="srv-visual-ring"></div>
             <div className="srv-visual-ring ring-2"></div>
-            <div className="srv-visual-center">🏭</div>
-            <div className="srv-visual-orbit srv-orbit-1">🔧</div>
-            <div className="srv-visual-orbit srv-orbit-2">⚡</div>
-            <div className="srv-visual-orbit srv-orbit-3">🏁</div>
+            <div className="srv-visual-center"><FaIndustry /></div>
+            <div className="srv-visual-orbit srv-orbit-1"><FaTools /></div>
+            <div className="srv-visual-orbit srv-orbit-2"><FaBolt /></div>
+            <div className="srv-visual-orbit srv-orbit-3"><FaFlagCheckered /></div>
           </div>
         </div>
 
@@ -203,7 +221,7 @@ const Servicio = () => {
                 onMouseLeave={() => setActiveService(null)}
                 style={{ animationDelay: `${idx * 0.1}s` }}
               >
-                {srv.popular && <div className="srv-popular-badge">🔥 POPULAR</div>}
+                {srv.popular && <div className="srv-popular-badge"><FaFire /> POPULAR</div>}
                 
                 <div className="srv-card-header">
                   <span className="srv-card-code">{srv.codigo}</span>
@@ -235,7 +253,7 @@ const Servicio = () => {
                   </div>
                   <button className="srv-card-btn">
                     SOLICITAR
-                    <span>→</span>
+                    <FaArrowRight />
                   </button>
                 </div>
 
@@ -253,7 +271,7 @@ const Servicio = () => {
             <div className="srv-taller-visual">
               <div className="srv-visual-frame">
                 <div className="srv-visual-content">
-                  <span>🏭</span>
+                  <span><FaIndustry /></span>
                   <p>NUESTRAS INSTALACIONES</p>
                 </div>
                 <div className="srv-visual-stat">
@@ -309,7 +327,7 @@ const Servicio = () => {
       <section className="srv-cta" id="cotizar">
         <div className="container">
           <div className="srv-cta-box">
-            <div className="srv-cta-badge">⚡ RESPUESTA INMEDIATA</div>
+            <div className="srv-cta-badge"><FaBolt /> RESPUESTA INMEDIATA</div>
             <h2>¿NECESITAS UNA COTIZACIÓN?</h2>
             <p>Déjanos tus datos y te contactamos en menos de 30 minutos.</p>
             

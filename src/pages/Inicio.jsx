@@ -3,6 +3,25 @@ import { Link } from "react-router-dom";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import Mensaje from "../components/Mensaje";
+import { 
+  FaHardHat, 
+  FaHandPaper, 
+  FaTshirt,      // ← Cambiado de FaJacket a FaTshirt
+  FaCog, 
+  FaCircle,      // ← Cambiado de FaTire a FaCircle (o usa FaDotCircle)
+  FaOilCan, 
+  FaMotorcycle, 
+  FaFire, 
+  FaMapMarkerAlt, 
+  FaPhone, 
+  FaClock, 
+  FaWhatsapp, 
+  FaEnvelope, 
+  FaArrowRight, 
+  FaLink,
+  FaShieldAlt,   // Alternativa para chaquetas
+  FaVest         // Otra alternativa para chaquetas
+} from 'react-icons/fa';
 import "../css/Inicio.css";
 
 const Inicio = () => {
@@ -41,12 +60,12 @@ const Inicio = () => {
   };
 
   const categorias = [
-    { nombre: "CASCOS", icono: "🪖", count: "45", img: "🪖" },
-    { nombre: "GUANTES", icono: "🧤", count: "32", img: "🧤" },
-    { nombre: "CHAQUETAS", icono: "🧥", count: "28", img: "🧥" },
-    { nombre: "REPUESTOS", icono: "⚙️", count: "156", img: "⚙️" },
-    { nombre: "NEUMÁTICOS", icono: "🛞", count: "24", img: "🛞" },
-    { nombre: "LUBRICANTES", icono: "🛢️", count: "18", img: "🛢️" }
+    { nombre: "CASCOS", icono: <FaHardHat />, count: "45", img: <FaHardHat /> },
+    { nombre: "GUANTES", icono: <FaHandPaper />, count: "32", img: <FaHandPaper /> },
+    { nombre: "CHAQUETAS", icono: <FaVest />, count: "28", img: <FaVest /> },  // ← Cambiado a FaVest
+    { nombre: "REPUESTOS", icono: <FaCog />, count: "156", img: <FaCog /> },
+    { nombre: "NEUMÁTICOS", icono: <FaCircle />, count: "24", img: <FaCircle /> },  // ← Cambiado a FaCircle
+    { nombre: "LUBRICANTES", icono: <FaOilCan />, count: "18", img: <FaOilCan /> }
   ];
 
   const stats = [
@@ -57,10 +76,10 @@ const Inicio = () => {
   ];
 
   const productosDestacados = [
-    { id: 1, nombre: "Casco AGV Pista GP RR", precio: 1200, badge: "NUEVO", img: "🪖" },
-    { id: 2, nombre: "Guantes Alpinestars GP", precio: 280, badge: "TOP", img: "🧤" },
-    { id: 3, nombre: "Kit Cadena DID ZVM-X", precio: 320, badge: "OFERTA", img: "⛓️" },
-    { id: 4, nombre: "Chaqueta Dainese Racing", precio: 650, badge: null, img: "🧥" }
+    { id: 1, nombre: "Casco AGV Pista GP RR", precio: 1200, badge: "NUEVO", img: <FaHardHat /> },
+    { id: 2, nombre: "Guantes Alpinestars GP", precio: 280, badge: "TOP", img: <FaHandPaper /> },
+    { id: 3, nombre: "Kit Cadena DID ZVM-X", precio: 320, badge: "OFERTA", img: <FaLink /> },
+    { id: 4, nombre: "Chaqueta Dainese Racing", precio: 650, badge: null, img: <FaVest /> }  // ← Cambiado a FaVest
   ];
 
   return (
@@ -75,7 +94,7 @@ const Inicio = () => {
         </div>
         
         <div className="container ini-hero-content">
-          <div className="ini-hero-badge">🏍️ DESDE 2009</div>
+          <div className="ini-hero-badge"><FaMotorcycle /> DESDE 2009</div>
           
           <h1 className="ini-hero-title">
             <span className="ini-title-line">TODO PARA TU</span>
@@ -90,10 +109,10 @@ const Inicio = () => {
           <div className="ini-hero-cta">
             <Link to="/productos" className="ini-btn-primary">
               <span>EXPLORAR CATÁLOGO</span>
-              <span className="ini-btn-arrow">→</span>
+              <span className="ini-btn-arrow"><FaArrowRight /></span>
             </Link>
             <Link to="/productos?ofertas=1" className="ini-btn-secondary">
-              <span className="btn-icon">🔥</span>
+              <span className="btn-icon"><FaFire /></span>
               <span>OFERTAS</span>
             </Link>
           </div>
@@ -101,10 +120,10 @@ const Inicio = () => {
           <div className="ini-hero-visual">
             <div className="ini-visual-ring"></div>
             <div className="ini-visual-ring ring-2"></div>
-            <div className="ini-visual-center">🏍️</div>
-            <div className="ini-visual-orbit ini-orbit-1">🛠️</div>
-            <div className="ini-visual-orbit ini-orbit-2">⚡</div>
-            <div className="ini-visual-orbit ini-orbit-3">🏁</div>
+            <div className="ini-visual-center"><FaMotorcycle /></div>
+            <div className="ini-visual-orbit ini-orbit-1"><FaCog /></div>
+            <div className="ini-visual-orbit ini-orbit-2"><FaFire /></div>
+            <div className="ini-visual-orbit ini-orbit-3"><FaMapMarkerAlt /></div>
           </div>
         </div>
 
@@ -141,7 +160,7 @@ const Inicio = () => {
                   <h3>{cat.nombre}</h3>
                   <span className="ini-cat-count">{cat.count} PRODUCTOS</span>
                 </div>
-                <div className="ini-cat-arrow">→</div>
+                <div className="ini-cat-arrow"><FaArrowRight /></div>
                 <div className="ini-cat-border"></div>
               </Link>
             ))}
@@ -178,9 +197,9 @@ const Inicio = () => {
             <aside className="ini-destacados-info">
               <div className="ini-info-box">
                 <div className="ini-info-header">
-                  <div className="ini-logo-mini">🏍️ RR BIKER</div>
+                  <div className="ini-logo-mini"><FaMotorcycle /> RR BIKER</div>
                   <div className="ini-badges-row">
-                    <span className="ini-badge-hot">🔥 TOP VENTAS</span>
+                    <span className="ini-badge-hot"><FaFire /> TOP VENTAS</span>
                     <span className="ini-badge-premium">PREMIUM</span>
                   </div>
                 </div>
@@ -211,7 +230,7 @@ const Inicio = () => {
                 </div>
 
                 <Link to="/productos" className="ini-btn-action">
-                  VER TODO →
+                  VER TODO <FaArrowRight />
                 </Link>
               </div>
             </aside>
@@ -253,7 +272,7 @@ const Inicio = () => {
           <div className="ini-contacto-split">
             
             <div className="ini-contacto-info">
-              <span className="ini-contacto-tag">📍 VISÍTANOS</span>
+              <span className="ini-contacto-tag"><FaMapMarkerAlt /> VISÍTANOS</span>
               <h2>¿HABLAMOS?</h2>
               <p className="ini-contacto-sub">
                 Estamos en Guacara listos para asesorarte 
@@ -262,7 +281,7 @@ const Inicio = () => {
 
               <div className="ini-contacto-items">
                 <div className="ini-contact-item">
-                  <div className="ini-item-icon">📍</div>
+                  <div className="ini-item-icon"><FaMapMarkerAlt /></div>
                   <div className="ini-item-text">
                     <h4>UBICACIÓN</h4>
                     <p>Calle Principal, Centro de Guacara<br/>Carabobo, Venezuela</p>
@@ -270,7 +289,7 @@ const Inicio = () => {
                 </div>
 
                 <div className="ini-contact-item">
-                  <div className="ini-item-icon">📞</div>
+                  <div className="ini-item-icon"><FaPhone /></div>
                   <div className="ini-item-text">
                     <h4>TELÉFONO / WHATSAPP</h4>
                     <p>+58 241-1234567<br/>+58 412-1234567</p>
@@ -278,7 +297,7 @@ const Inicio = () => {
                 </div>
 
                 <div className="ini-contact-item">
-                  <div className="ini-item-icon">🕐</div>
+                  <div className="ini-item-icon"><FaClock /></div>
                   <div className="ini-item-text">
                     <h4>HORARIO</h4>
                     <p>Lun-Vie: 8:00AM - 6:00PM<br/>Sáb: 9:00AM - 4:00PM</p>
@@ -289,7 +308,7 @@ const Inicio = () => {
 
             <div className="ini-contacto-form">
               <div className="ini-form-header">
-                <span className="ini-form-tag">✉️ CONTACTO RÁPIDO</span>
+                <span className="ini-form-tag"><FaEnvelope /> CONTACTO RÁPIDO</span>
                 <h3>ESCRÍBENOS</h3>
               </div>
               

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { FaMotorcycle, FaTools, FaShoppingCart, FaFlagCheckered, FaArrowRight } from 'react-icons/fa';
 import "../css/whatsapp.css";
 
 const Mensaje = () => {
@@ -67,7 +68,7 @@ const Mensaje = () => {
 
   const phoneNumber = "584241234567";
   const message = encodeURIComponent(
-    "¡Hola RR BIKER! 👋🏍️ Estoy interesado en sus servicios. ¿Me pueden dar información?"
+    "¡Hola RR BIKER! Estoy interesado en sus servicios. ¿Me pueden dar información?"
   );
   
   const whatsappLink = `https://wa.me/${phoneNumber}?text=${message}`;
@@ -95,7 +96,7 @@ const Mensaje = () => {
             <div className="rr-header-pattern"></div>
             <div className="rr-header-content">
               <div className="rr-avatar">
-                <span className="rr-avatar-icon">🏍️</span>
+                <span className="rr-avatar-icon"><FaMotorcycle /></span>
                 <div className="rr-avatar-status"></div>
               </div>
               
@@ -132,7 +133,7 @@ const Mensaje = () => {
             
             <div className="rr-message rr-message-incoming">
               <div className="rr-message-bubble">
-                <p>¡Hola! 🏍️ Bienvenido a <strong>RR BIKER</strong></p>
+                <p>¡Hola! <FaMotorcycle /> Bienvenido a <strong>RR BIKER</strong></p>
                 <span className="rr-message-time">Ahora</span>
               </div>
             </div>
@@ -141,9 +142,9 @@ const Mensaje = () => {
               <div className="rr-message-bubble">
                 <p>¿En qué podemos ayudarte con tu moto hoy? Tenemos:</p>
                 <ul className="rr-services-list">
-                  <li>🔧 Servicio técnico especializado</li>
-                  <li>🛒 Repuestos originales</li>
-                  <li>🏁 Equipamiento de competición</li>
+                  <li><FaTools /> Servicio técnico especializado</li>
+                  <li><FaShoppingCart /> Repuestos originales</li>
+                  <li><FaFlagCheckered /> Equipamiento de competición</li>
                 </ul>
                 <span className="rr-message-time">Ahora</span>
               </div>
@@ -188,7 +189,7 @@ const Mensaje = () => {
                 </svg>
               </span>
               <span className="rr-btn-text">Iniciar conversación</span>
-              <span className="rr-btn-arrow">→</span>
+              <span className="rr-btn-arrow"><FaArrowRight /></span>
             </a>
           </div>
         </div>
