@@ -9,9 +9,6 @@ const Login = () => {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const [isRegistering, setIsRegistering] = useState(false);
-  const [nombre, setNombre] = useState('');
-  const [session, setSession] = useState(null);
   const formRef = useRef(null);
   const navigate = useNavigate();
 
@@ -21,13 +18,11 @@ const Login = () => {
       const container = document.querySelector('.login-container');
       if (!container) return;
       
-      // Limpiar efectos existentes
       const existingParticles = container.querySelector('.particles');
       const existingLines = container.querySelector('.energy-lines');
       if (existingParticles) existingParticles.remove();
       if (existingLines) existingLines.remove();
 
-      // Crear partículas de chispas
       const particlesContainer = document.createElement('div');
       particlesContainer.className = 'particles';
       
@@ -42,7 +37,6 @@ const Login = () => {
       
       container.appendChild(particlesContainer);
 
-      // Crear líneas de energía
       const linesContainer = document.createElement('div');
       linesContainer.className = 'energy-lines';
       
@@ -90,17 +84,16 @@ const Login = () => {
     };
   }, []);
 
-  // Verificar sesión
+  // Verificar sesión al cargar
   useEffect(() => {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      if (session && !isRegistering) {
+      if (session) {
         navigate('/admin');
       }
     };
     checkSession();
-  }, [navigate, isRegistering]);
+  }, [navigate]);
 
   // Efecto de onda roja en inputs
   const createRipple = (e) => {
@@ -134,7 +127,6 @@ const Login = () => {
 
       if (error) throw error;
 
-      // Animación de éxito roja
       if (formRef.current) {
         formRef.current.classList.add('success-animation');
       }
@@ -149,94 +141,21 @@ const Login = () => {
     }
   };
 
-  const handleRegister = async (e) => {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-
-    try {
-      // 1. Crear usuario en Authentication de Supabase
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-      });
-
-      if (authError) throw authError;
-
-      // 2. Insertar en la tabla administradores
-      const { error: dbError } = await supabase
-        .from('administradores')
-        .insert([
-          {
-            id: authData.user.id,
-            nombre: nombre,
-            correo: email,
-            contrasena: password, // Nota: en producción considera no guardar esto
-            contrasena_hash: 'managed_by_supabase_auth'
-          }
-        ]);
-
-      if (dbError) throw dbError;
-
-      // Éxito
-      if (formRef.current) {
-        formRef.current.classList.add('success-animation');
-      }
-      
-      setTimeout(() => {
-        setIsRegistering(false);
-        setNombre('');
-        setEmail('');
-        setPassword('');
-        setLoading(false);
-        alert('Administrador creado exitosamente');
-      }, 500);
-
-    } catch (err) {
-      setError(err.message);
-      setLoading(false);
-    }
-  };
-
-  // Si hay sesión activa, mostrar opción de registro
-  const toggleRegister = () => {
-    setIsRegistering(!isRegistering);
-    setError(null);
-    setNombre('');
-    setEmail('');
-    setPassword('');
-  };
-
   return (
     <div className="login-container">
       <form 
         ref={formRef}
         className="login-form" 
-        onSubmit={isRegistering ? handleRegister : handleLogin}
+        onSubmit={handleLogin}
         style={{
           transform: `perspective(1000px) rotateX(${-mousePosition.y}deg) rotateY(${mousePosition.x}deg) translateY(${mousePosition.y * 0.5}px)`
         }}
       >
-        <h2>{isRegistering ? 'Registrar Administrador' : 'Iniciar sesión'}</h2>
+        <h2>Iniciar sesión</h2>
         
         {error && (
           <div className="login-error">
             {error}
-          </div>
-        )}
-
-        {isRegistering && (
-          <div className="input-wrapper">
-            <label htmlFor="nombre">Nombre completo</label>
-            <input
-              id="nombre"
-              type="text"
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-              onClick={createRipple}
-              placeholder="Nombre del administrador"
-              required
-            />
           </div>
         )}
 
@@ -264,7 +183,7 @@ const Login = () => {
             onClick={createRipple}
             placeholder="••••••••"
             required
-            autoComplete={isRegistering ? "new-password" : "current-password"}
+            autoComplete="current-password"
           />
         </div>
 
@@ -273,21 +192,8 @@ const Login = () => {
           disabled={loading}
           className={loading ? 'loading' : ''}
         >
-          {loading ? 'Cargando...' : (isRegistering ? 'Crear Administrador' : 'Entrar')}
+          {loading ? 'Cargando...' : 'Entrar'}
         </button>
-
-        {/* Solo mostrar toggle si hay sesión activa */}
-        {session && (
-          <div className="register-toggle">
-            <button 
-              type="button" 
-              className="toggle-btn"
-              onClick={toggleRegister}
-            >
-              {isRegistering ? '← Volver al Login' : '+ Registrar nuevo administrador'}
-            </button>
-          </div>
-        )}
       </form>
     </div>
   );

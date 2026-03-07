@@ -1,32 +1,52 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
 import supabase from '../conf/supabase';
 import '../css/admin.css';
 
 const Admin = () => {
   const [user, setUser] = useState(null);
-  const [orders, setOrders] = useState([]);
+  const [activeTab, setActiveTab] = useState('pedidos');
+  const [pedidos, setPedidos] = useState([]);
+  const [productos, setProductos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     total: 0,
     pending: 0,
     completed: 0,
-    today: 0
+    revenue: 0,
+    lowStock: 0,
+    totalProducts: 0
   });
+  
+  // Filtros Pedidos
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('');
   const [sortBy, setSortBy] = useState('date_desc');
   const [currentPage, setCurrentPage] = useState(1);
-  const [editingOrder, setEditingOrder] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   
-  const ordersPerPage = 10;
+  // Filtros Productos
+  const [searchProduct, setSearchProduct] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [stockFilter, setStockFilter] = useState('all');
+  
+  // Modales
+  const [editingPedido, setEditingPedido] = useState(null);
+  const [editingProducto, setEditingProducto] = useState(null);
+  const [isPedidoModalOpen, setIsPedidoModalOpen] = useState(false);
+  const [isProductoModalOpen, setIsProductoModalOpen] = useState(false);
+  const [isNewProductoModalOpen, setIsNewProductoModalOpen] = useState(false);
+  
+  const pedidosPerPage = 10;
+  const productosPerPage = 12;
   const navigate = useNavigate();
+  
+  // Refs para animaciones
+  const statsRef = useRef(null);
+  const tableRef = useRef(null);
+  const modalRef = useRef(null);
 
-  // Verificar sesión y cargar datos
+  // Verificar sesión
   useEffect(() => {
     const init = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -35,179 +55,240 @@ const Admin = () => {
         return;
       }
       setUser(session.user);
-      await fetchOrders();
+      await fetchData();
     };
-
     init();
   }, [navigate]);
 
-  // Cargar pedidos desde Supabase
-  const fetchOrders = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('orders')
-        .select('*')
-        .order('created_at', { ascending: false });
+  // Animación de entrada
+  useEffect(() => {
+    if (!loading && statsRef.current) {
+      animateStats();
+    }
+  }, [loading]);
 
-      if (error) throw error;
-      
-      setOrders(data || []);
-      calculateStats(data || []);
+  // Animación al cambiar de tab
+  useEffect(() => {
+    if (tableRef.current) {
+      animateTableEntry();
+    }
+  }, [activeTab]);
+
+  const animateStats = () => {
+    const cards = statsRef.current.querySelectorAll('.stat-card');
+    cards.forEach((card, index) => {
+      card.style.opacity = '0';
+      card.style.transform = 'translateY(30px) scale(0.9)';
+      setTimeout(() => {
+        card.style.transition = 'all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)';
+        card.style.opacity = '1';
+        card.style.transform = 'translateY(0) scale(1)';
+      }, index * 100);
+    });
+  };
+
+  const animateTableEntry = () => {
+    const rows = tableRef.current?.querySelectorAll('tbody tr');
+    if (rows) {
+      rows.forEach((row, index) => {
+        row.style.opacity = '0';
+        row.style.transform = 'translateX(-30px)';
+        setTimeout(() => {
+          row.style.transition = 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
+          row.style.opacity = '1';
+          row.style.transform = 'translateX(0)';
+        }, index * 50);
+      });
+    }
+  };
+
+  const openModal = (modalType) => {
+    if (modalRef.current) {
+      modalRef.current.style.opacity = '0';
+      modalRef.current.style.transform = 'scale(0.8) translateY(50px)';
+      setTimeout(() => {
+        if (modalType === 'pedido') setIsPedidoModalOpen(true);
+        if (modalType === 'producto') setIsProductoModalOpen(true);
+        if (modalType === 'nuevo-producto') setIsNewProductoModalOpen(true);
+      }, 50);
+    }
+  };
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      // Obtener productos primero para tenerlos disponibles
+      const productosData = await fetchProductosData();
+      // Luego obtener pedidos con los productos disponibles
+      await fetchPedidosData(productosData);
     } catch (error) {
-      console.error('Error fetching orders:', error);
-      // Datos de ejemplo si no hay tabla
-      const mockOrders = [
-        {
-          id: 1,
-          customer_name: 'Juan Pérez',
-          customer_email: 'juan@email.com',
-          phone: '+34 612 345 678',
-          product: 'Producto A',
-          quantity: 2,
-          total: 199.98,
-          status: 'completed',
-          created_at: '2024-01-15T10:30:00',
-          notes: 'Entrega urgente'
-        },
-        {
-          id: 2,
-          customer_name: 'María García',
-          customer_email: 'maria@email.com',
-          phone: '+34 623 456 789',
-          product: 'Producto B',
-          quantity: 1,
-          total: 89.99,
-          status: 'pending',
-          created_at: '2024-01-15T14:20:00',
-          notes: ''
-        },
-        {
-          id: 3,
-          customer_name: 'Carlos López',
-          customer_email: 'carlos@email.com',
-          phone: '+34 634 567 890',
-          product: 'Producto C',
-          quantity: 3,
-          total: 299.97,
-          status: 'processing',
-          created_at: '2024-01-14T09:15:00',
-          notes: 'Llamar antes de entregar'
-        }
-      ];
-      setOrders(mockOrders);
-      calculateStats(mockOrders);
+      console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Calcular estadísticas
-  const calculateStats = (ordersData) => {
-    const today = new Date().toISOString().split('T')[0];
-    const todayOrders = ordersData.filter(o => o.created_at.startsWith(today));
+  const fetchPedidosData = async (productosData) => {
+    try {
+      const { data: pedidosData, error } = await supabase
+        .from('pedidos')
+        .select(`*, usuarios (nombre, correo, telefono, direccion, ciudad, estado)`)
+        .order('fecha', { ascending: false });
+      
+      if (error) throw error;
+      
+      const { data: detallesData, error: detallesError } = await supabase
+        .from('detalles_pedido')
+        .select('*');
+      
+      if (detallesError) throw detallesError;
+      
+      const pedidosCompletos = (pedidosData || []).map(pedido => ({
+        ...pedido,
+        detalles: detallesData?.filter(d => d.pedido_id === pedido.id) || [],
+        cliente_nombre: pedido.usuarios?.nombre || 'N/A',
+        cliente_email: pedido.usuarios?.correo || 'N/A',
+        cliente_telefono: pedido.usuarios?.telefono || 'N/A',
+      }));
+      
+      setPedidos(pedidosCompletos);
+      calculateStats(pedidosCompletos, productosData || []);
+    } catch (error) {
+      console.error('Error fetching pedidos:', error);
+    }
+  };
+
+  const fetchProductosData = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('productos')
+        .select('*')
+        .order('codigo', { ascending: true });
+      
+      if (error) throw error;
+      setProductos(data || []);
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching productos:', error);
+      return [];
+    }
+  };
+
+  const calculateStats = (pedidosData, productosData) => {
+    const lowStock = productosData?.filter(p => p.cantidad < 10).length || 0;
     
     setStats({
-      total: ordersData.length,
-      pending: ordersData.filter(o => o.status === 'pending').length,
-      completed: ordersData.filter(o => o.status === 'completed').length,
-      today: todayOrders.length,
-      revenue: ordersData.reduce((sum, o) => sum + (o.total || 0), 0)
+      total: pedidosData?.length || 0,
+      pending: pedidosData?.filter(p => p.estado === 'pendiente').length || 0,
+      completed: pedidosData?.filter(p => p.estado === 'completado').length || 0,
+      revenue: pedidosData?.reduce((sum, p) => sum + (parseFloat(p.total) || 0), 0) || 0,
+      lowStock: lowStock,
+      totalProducts: productosData?.length || 0
     });
   };
 
-  // Filtrar y ordenar pedidos
-  const filteredOrders = orders.filter(order => {
+  // Filtrar Pedidos
+  const filteredPedidos = pedidos.filter(pedido => {
     const matchesSearch = 
-      order.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.customer_email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.id.toString().includes(searchTerm);
-    
-    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
-    const matchesDate = !dateFilter || order.created_at.startsWith(dateFilter);
-    
+      pedido.cliente_nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      pedido.id.toString().includes(searchTerm);
+    const matchesStatus = statusFilter === 'all' || pedido.estado === statusFilter;
+    const matchesDate = !dateFilter || pedido.fecha?.startsWith(dateFilter);
     return matchesSearch && matchesStatus && matchesDate;
   }).sort((a, b) => {
     switch(sortBy) {
-      case 'date_desc': return new Date(b.created_at) - new Date(a.created_at);
-      case 'date_asc': return new Date(a.created_at) - new Date(b.created_at);
-      case 'total_desc': return (b.total || 0) - (a.total || 0);
-      case 'total_asc': return (a.total || 0) - (b.total || 0);
+      case 'date_desc': return new Date(b.fecha) - new Date(a.fecha);
+      case 'date_asc': return new Date(a.fecha) - new Date(b.fecha);
+      case 'total_desc': return (parseFloat(b.total) || 0) - (parseFloat(a.total) || 0);
+      case 'total_asc': return (parseFloat(a.total) || 0) - (parseFloat(b.total) || 0);
       default: return 0;
     }
   });
 
-  // Paginación
-  const totalPages = Math.ceil(filteredOrders.length / ordersPerPage);
-  const paginatedOrders = filteredOrders.slice(
-    (currentPage - 1) * ordersPerPage,
-    currentPage * ordersPerPage
+  // Filtrar Productos
+  const filteredProductos = productos.filter(prod => {
+    const matchesSearch = 
+      prod.codigo?.toLowerCase().includes(searchProduct.toLowerCase());
+    const matchesCategory = categoryFilter === 'all' || prod.categoria === categoryFilter;
+    const matchesStock = stockFilter === 'all' || 
+      (stockFilter === 'low' && prod.cantidad < 10) ||
+      (stockFilter === 'out' && prod.cantidad === 0) ||
+      (stockFilter === 'available' && prod.cantidad > 0);
+    return matchesSearch && matchesCategory && matchesStock;
+  });
+
+  const totalPages = Math.ceil(filteredPedidos.length / pedidosPerPage);
+  const paginatedPedidos = filteredPedidos.slice(
+    (currentPage - 1) * pedidosPerPage,
+    currentPage * pedidosPerPage
   );
 
-  // Formatear fecha
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleString('es-ES', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  // Formatear moneda
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('es-ES', {
       style: 'currency',
-      currency: 'EUR'
-    }).format(amount);
+      currency: 'USD'
+    }).format(amount || 0);
   };
 
-  // Abrir modal de edición
-  const handleEdit = (order) => {
-    setEditingOrder({ ...order });
-    setIsModalOpen(true);
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleString('es-ES', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
   };
 
-  // Guardar cambios
-  const handleSave = async () => {
+  const handleSavePedido = async () => {
     try {
       const { error } = await supabase
-        .from('orders')
-        .update(editingOrder)
-        .eq('id', editingOrder.id);
-
+        .from('pedidos')
+        .update({
+          estado: editingPedido.estado,
+          notas: editingPedido.notas,
+          direccion_envio: editingPedido.direccion_envio,
+          ciudad_envio: editingPedido.ciudad_envio,
+          estado_envio: editingPedido.estado_envio,
+          telefono_contacto: editingPedido.telefono_contacto
+        })
+        .eq('id', editingPedido.id);
+      
       if (error) throw error;
-
-      // Actualizar estado local
-      setOrders(orders.map(o => o.id === editingOrder.id ? editingOrder : o));
-      calculateStats(orders.map(o => o.id === editingOrder.id ? editingOrder : o));
-      setIsModalOpen(false);
-      setEditingOrder(null);
+      setPedidos(pedidos.map(p => p.id === editingPedido.id ? editingPedido : p));
+      setIsPedidoModalOpen(false);
     } catch (error) {
-      console.error('Error updating order:', error);
-      alert('Error al guardar los cambios');
+      alert('Error al guardar');
     }
   };
 
-  // Eliminar pedido
-  const handleDelete = async (id) => {
-    if (!window.confirm('¿Estás seguro de eliminar este pedido?')) return;
-
+  const handleSaveProducto = async (isNew = false) => {
     try {
-      const { error } = await supabase
-        .from('orders')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
-      const updatedOrders = orders.filter(o => o.id !== id);
-      setOrders(updatedOrders);
-      calculateStats(updatedOrders);
+      const producto = editingProducto;
+      if (isNew) {
+        const { error } = await supabase.from('productos').insert([producto]);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('productos')
+          .update(producto)
+          .eq('id', producto.id);
+        if (error) throw error;
+      }
+      await fetchData();
+      setIsProductoModalOpen(false);
+      setIsNewProductoModalOpen(false);
+      setEditingProducto(null);
     } catch (error) {
-      console.error('Error deleting order:', error);
-      alert('Error al eliminar el pedido');
+      alert('Error al guardar producto');
+    }
+  };
+
+  const handleDeleteProducto = async (id) => {
+    if (!window.confirm('¿Eliminar este producto?')) return;
+    try {
+      await supabase.from('productos').delete().eq('id', id);
+      await fetchData();
+    } catch (error) {
+      alert('Error al eliminar');
     }
   };
 
@@ -217,316 +298,554 @@ const Admin = () => {
   };
 
   const getStatusBadge = (status) => {
-    const statusConfig = {
-      pending: { class: 'status-pending', label: 'Pendiente' },
-      processing: { class: 'status-processing', label: 'En proceso' },
-      completed: { class: 'status-completed', label: 'Completado' },
-      cancelled: { class: 'status-cancelled', label: 'Cancelado' }
+    const config = {
+      pendiente: { class: 'status-pending', label: 'Pendiente', icon: '⏳' },
+      procesando: { class: 'status-processing', label: 'Procesando', icon: '⚙️' },
+      enviado: { class: 'status-shipped', label: 'Enviado', icon: '🚚' },
+      completado: { class: 'status-completed', label: 'Completado', icon: '✓' },
+      cancelado: { class: 'status-cancelled', label: 'Cancelado', icon: '✕' }
     };
-    const config = statusConfig[status] || statusConfig.pending;
-    return <span className={`status-badge ${config.class}`}>{config.label}</span>;
+    const c = config[status] || config.pendiente;
+    return (
+      <span className={`status-badge ${c.class}`}>
+        <span className="status-icon">{c.icon}</span>
+        {c.label}
+      </span>
+    );
+  };
+
+  const getStockBadge = (cantidad) => {
+    if (cantidad === 0) return <span className="stock-badge stock-out">Agotado</span>;
+    if (cantidad < 10) return <span className="stock-badge stock-low">Bajo Stock</span>;
+    return <span className="stock-badge stock-ok">Disponible</span>;
   };
 
   if (!user) return null;
 
-  return (
-    <div className="admin-page">
-      <div className="admin-header">
-        <h1>Panel de Administración</h1>
-        <div className="user-info">
-          <span className="user-email">{user.email}</span>
-          <button className="logout-btn" onClick={handleLogout}>
-            Cerrar sesión
-          </button>
+  if (loading) {
+    return (
+      <div className="admin-page">
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p>Cargando datos...</p>
         </div>
       </div>
+    );
+  }
 
-      <div className="admin-content">
-        {/* Stats Cards */}
-        <div className="stats-grid">
-          <div className="stat-card">
-            <div className="stat-icon">📦</div>
-            <div className="stat-value">{stats.total}</div>
-            <div className="stat-label">Total Pedidos</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-icon">⏳</div>
-            <div className="stat-value">{stats.pending}</div>
-            <div className="stat-label">Pendientes</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-icon">✓</div>
-            <div className="stat-value">{stats.completed}</div>
-            <div className="stat-label">Completados</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-icon">📅</div>
-            <div className="stat-value">{stats.today}</div>
-            <div className="stat-label">Hoy</div>
-            <span className="stat-change">+{stats.today} nuevos</span>
-          </div>
+  return (
+    <div className="admin-page">
+      {/* Background Effects */}
+      <div className="bg-effects">
+        <div className="gradient-orb orb-1"></div>
+        <div className="gradient-orb orb-2"></div>
+        <div className="grid-overlay"></div>
+      </div>
+
+      {/* Header */}
+      <header className="admin-header">
+        <div className="header-brand">
+          <div className="logo-pulse"></div>
+          <h1>ADMIN PANEL</h1>
         </div>
+        
+        <nav className="header-nav">
+          <button 
+            className={`nav-tab ${activeTab === 'pedidos' ? 'active' : ''}`}
+            onClick={() => setActiveTab('pedidos')}
+          >
+            <span className="tab-icon">📦</span>
+            Pedidos
+            {stats.pending > 0 && <span className="tab-badge">{stats.pending}</span>}
+          </button>
+          <button 
+            className={`nav-tab ${activeTab === 'inventario' ? 'active' : ''}`}
+            onClick={() => setActiveTab('inventario')}
+          >
+            <span className="tab-icon">🏭</span>
+            Inventario
+            {stats.lowStock > 0 && <span className="tab-badge warning">{stats.lowStock}</span>}
+          </button>
+        </nav>
 
-        {/* Filters */}
-        <div className="filters-section">
-          <div className="search-box">
-            <input
-              type="text"
-              placeholder="Buscar por cliente, email o ID..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+        <div className="user-section">
+          <div className="user-avatar">
+            {user.email.charAt(0).toUpperCase()}
           </div>
-          
-          <div className="filter-group">
-            <label>Estado:</label>
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-              <option value="all">Todos</option>
-              <option value="pending">Pendiente</option>
-              <option value="processing">En proceso</option>
-              <option value="completed">Completado</option>
-              <option value="cancelled">Cancelado</option>
-            </select>
+          <div className="user-info">
+            <span className="user-name">{user.email.split('@')[0]}</span>
+            <span className="user-role">Administrador</span>
           </div>
-
-          <div className="filter-group">
-            <label>Fecha:</label>
-            <input
-              type="date"
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-            />
-          </div>
-
-          <div className="filter-group">
-            <label>Ordenar:</label>
-            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-              <option value="date_desc">Más reciente</option>
-              <option value="date_asc">Más antiguo</option>
-              <option value="total_desc">Mayor total</option>
-              <option value="total_asc">Menor total</option>
-            </select>
-          </div>
+          <button className="logout-btn" onClick={handleLogout}>
+            <span>Salir</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+          </button>
         </div>
+      </header>
 
-        {/* Orders Table */}
-        <div className="orders-section">
-          <div className="section-header">
-            <h3>Listado de Pedidos</h3>
-            <button className="btn-primary" onClick={fetchOrders}>
-              ↻ Actualizar
-            </button>
-          </div>
-
-          {loading ? (
-            <div className="loading-spinner">
-              <div className="spinner"></div>
-              Cargando pedidos...
-            </div>
+      <main className="admin-main">
+        {/* Stats Grid */}
+        <div className="stats-container" ref={statsRef}>
+          {activeTab === 'pedidos' ? (
+            <>
+              <div className="stat-card highlight">
+                <div className="stat-glow"></div>
+                <div className="stat-icon">💰</div>
+                <div className="stat-content">
+                  <span className="stat-value">{formatCurrency(stats.revenue)}</span>
+                  <span className="stat-label">Ingresos Totales</span>
+                </div>
+                <div className="stat-chart">
+                  <div className="chart-bar" style={{height: '70%'}}></div>
+                  <div className="chart-bar" style={{height: '90%'}}></div>
+                  <div className="chart-bar" style={{height: '60%'}}></div>
+                </div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-icon">📦</div>
+                <div className="stat-content">
+                  <span className="stat-value">{stats.total}</span>
+                  <span className="stat-label">Total Pedidos</span>
+                </div>
+              </div>
+              <div className="stat-card pulse">
+                <div className="stat-icon">⏳</div>
+                <div className="stat-content">
+                  <span className="stat-value">{stats.pending}</span>
+                  <span className="stat-label">Pendientes</span>
+                </div>
+              </div>
+              <div className="stat-card success">
+                <div className="stat-icon">✓</div>
+                <div className="stat-content">
+                  <span className="stat-value">{stats.completed}</span>
+                  <span className="stat-label">Completados</span>
+                </div>
+              </div>
+            </>
           ) : (
             <>
-              <div className="table-container">
-                <table className="orders-table">
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>Cliente</th>
-                      <th>Contacto</th>
-                      <th>Producto</th>
-                      <th>Total</th>
-                      <th>Estado</th>
-                      <th>Fecha</th>
-                      <th>Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paginatedOrders.length > 0 ? (
-                      paginatedOrders.map((order) => (
-                        <tr key={order.id}>
-                          <td>#{order.id}</td>
-                          <td>
-                            <strong>{order.customer_name}</strong>
-                          </td>
-                          <td>
-                            <div>{order.customer_email}</div>
-                            <small style={{ color: 'var(--white-muted)' }}>{order.phone}</small>
-                          </td>
-                          <td>
-                            {order.product} x{order.quantity}
-                          </td>
-                          <td style={{ fontWeight: 600, color: 'var(--primary-red)' }}>
-                            {formatCurrency(order.total)}
-                          </td>
-                          <td>{getStatusBadge(order.status)}</td>
-                          <td>{formatDate(order.created_at)}</td>
-                          <td>
-                            <div className="action-btns">
-                              <button 
-                                className="action-btn" 
-                                onClick={() => handleEdit(order)}
-                                title="Editar"
-                              >
-                                ✎
-                              </button>
-                              <button 
-                                className="action-btn" 
-                                onClick={() => handleDelete(order.id)}
-                                title="Eliminar"
-                              >
-                                🗑
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan="8" className="empty-state">
-                          <div className="empty-state-icon">📭</div>
-                          <h4>No se encontraron pedidos</h4>
-                          <p>Intenta ajustar los filtros de búsqueda</p>
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="pagination">
-                  <button 
-                    className="page-btn" 
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                  >
-                    ←
-                  </button>
-                  
-                  {[...Array(totalPages)].map((_, i) => (
-                    <button
-                      key={i + 1}
-                      className={`page-btn ${currentPage === i + 1 ? 'active' : ''}`}
-                      onClick={() => setCurrentPage(i + 1)}
-                    >
-                      {i + 1}
-                    </button>
-                  ))}
-                  
-                  <button 
-                    className="page-btn" 
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
-                  >
-                    →
-                  </button>
+              <div className="stat-card highlight">
+                <div className="stat-glow"></div>
+                <div className="stat-icon">🏭</div>
+                <div className="stat-content">
+                  <span className="stat-value">{stats.totalProducts}</span>
+                  <span className="stat-label">Total Productos</span>
                 </div>
-              )}
+              </div>
+              <div className="stat-card warning pulse">
+                <div className="stat-icon">⚠️</div>
+                <div className="stat-content">
+                  <span className="stat-value">{stats.lowStock}</span>
+                  <span className="stat-label">Bajo Stock</span>
+                </div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-icon">📊</div>
+                <div className="stat-content">
+                  <span className="stat-value">{productos.filter(p => p.cantidad > 0).length}</span>
+                  <span className="stat-label">Disponibles</span>
+                </div>
+              </div>
+              <div className="stat-card danger">
+                <div className="stat-icon">🚫</div>
+                <div className="stat-content">
+                  <span className="stat-value">{productos.filter(p => p.cantidad === 0).length}</span>
+                  <span className="stat-label">Agotados</span>
+                </div>
+              </div>
             </>
           )}
         </div>
-      </div>
 
-      {/* Edit Modal */}
-      {isModalOpen && editingOrder && (
-        <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Editar Pedido #{editingOrder.id}</h3>
-              <button className="close-btn" onClick={() => setIsModalOpen(false)}>
-                ×
-              </button>
-            </div>
-            
-            <div className="modal-body">
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Cliente</label>
+        {/* Content Section */}
+        <div className="content-section" ref={tableRef}>
+          {activeTab === 'pedidos' ? (
+            <>
+              {/* Filtros Pedidos */}
+              <div className="filters-bar">
+                <div className="search-box animated">
+                  <svg className="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                  </svg>
                   <input
                     type="text"
-                    value={editingOrder.customer_name}
-                    onChange={(e) => setEditingOrder({...editingOrder, customer_name: e.target.value})}
+                    placeholder="Buscar pedidos..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
-                <div className="form-group">
-                  <label>Email</label>
-                  <input
-                    type="email"
-                    value={editingOrder.customer_email}
-                    onChange={(e) => setEditingOrder({...editingOrder, customer_email: e.target.value})}
-                  />
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Teléfono</label>
-                  <input
-                    type="tel"
-                    value={editingOrder.phone || ''}
-                    onChange={(e) => setEditingOrder({...editingOrder, phone: e.target.value})}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Estado</label>
-                  <select
-                    value={editingOrder.status}
-                    onChange={(e) => setEditingOrder({...editingOrder, status: e.target.value})}
-                  >
-                    <option value="pending">Pendiente</option>
-                    <option value="processing">En proceso</option>
-                    <option value="completed">Completado</option>
-                    <option value="cancelled">Cancelado</option>
+                
+                <div className="filter-chips">
+                  <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                    <option value="all">Todos los estados</option>
+                    <option value="pendiente">Pendiente</option>
+                    <option value="procesando">Procesando</option>
+                    <option value="enviado">Enviado</option>
+                    <option value="completado">Completado</option>
+                    <option value="cancelado">Cancelado</option>
+                  </select>
+                  
+                  <input type="date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} />
+                  
+                  <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+                    <option value="date_desc">Más reciente</option>
+                    <option value="date_asc">Más antiguo</option>
+                    <option value="total_desc">Mayor monto</option>
+                    <option value="total_asc">Menor monto</option>
                   </select>
                 </div>
               </div>
 
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Producto</label>
+              {/* Tabla Pedidos */}
+              <div className="data-table-container">
+                {paginatedPedidos.length === 0 ? (
+                  <div className="empty-state">
+                    <p>No se encontraron pedidos</p>
+                  </div>
+                ) : (
+                  <>
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>ID</th>
+                          <th>Cliente</th>
+                          <th>Productos</th>
+                          <th>Total</th>
+                          <th>Estado</th>
+                          <th>Fecha</th>
+                          <th>Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paginatedPedidos.map((pedido) => (
+                          <tr key={pedido.id} className="table-row-animated">
+                            <td className="id-cell">#{pedido.id.toString().padStart(4, '0')}</td>
+                            <td>
+                              <div className="client-info">
+                                <span className="client-name">{pedido.cliente_nombre}</span>
+                                <span className="client-email">{pedido.cliente_email}</span>
+                              </div>
+                            </td>
+                            <td>
+                              <div className="products-preview">
+                                {pedido.detalles?.map((d, i) => (
+                                  <span key={i} className="product-tag">
+                                    {d.cantidad}x {d.nombre_producto}
+                                  </span>
+                                ))}
+                              </div>
+                            </td>
+                            <td className="amount-cell">{formatCurrency(pedido.total)}</td>
+                            <td>{getStatusBadge(pedido.estado)}</td>
+                            <td className="date-cell">{formatDate(pedido.fecha)}</td>
+                            <td>
+                              <div className="action-buttons">
+                                <button 
+                                  className="action-btn edit"
+                                  onClick={() => {
+                                    setEditingPedido(pedido);
+                                    setIsPedidoModalOpen(true);
+                                  }}
+                                >
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                  </svg>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    
+                    {totalPages > 1 && (
+                      <div className="pagination">
+                        <button 
+                          className="page-btn"
+                          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                          disabled={currentPage === 1}
+                        >
+                          ←
+                        </button>
+                        {[...Array(totalPages)].map((_, i) => (
+                          <button
+                            key={i}
+                            className={`page-btn ${currentPage === i + 1 ? 'active' : ''}`}
+                            onClick={() => setCurrentPage(i + 1)}
+                          >
+                            {i + 1}
+                          </button>
+                        ))}
+                        <button 
+                          className="page-btn"
+                          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                          disabled={currentPage === totalPages}
+                        >
+                          →
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Filtros Productos */}
+              <div className="filters-bar">
+                <div className="search-box animated">
+                  <svg className="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                  </svg>
                   <input
                     type="text"
-                    value={editingOrder.product}
-                    onChange={(e) => setEditingOrder({...editingOrder, product: e.target.value})}
+                    placeholder="Buscar productos..."
+                    value={searchProduct}
+                    onChange={(e) => setSearchProduct(e.target.value)}
                   />
+                </div>
+                
+                <div className="filter-chips">
+                  <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+                    <option value="all">Todas las categorías</option>
+                    <option value="electronica">Electrónica</option>
+                    <option value="ropa">Ropa</option>
+                    <option value="hogar">Hogar</option>
+                  </select>
+                  
+                  <select value={stockFilter} onChange={(e) => setStockFilter(e.target.value)}>
+                    <option value="all">Todo el stock</option>
+                    <option value="available">Disponible</option>
+                    <option value="low">Bajo stock</option>
+                    <option value="out">Agotado</option>
+                  </select>
+                </div>
+
+                <button 
+                  className="btn-primary glow"
+                  onClick={() => {
+                    setEditingProducto({
+                      codigo: '',
+                      nombre: '',
+                      categoria: '',
+                      cantidad: 0,
+                      costo_unitario: 0,
+                      precio_venta: 0
+                    });
+                    setIsNewProductoModalOpen(true);
+                  }}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                  </svg>
+                  Nuevo Producto
+                </button>
+              </div>
+
+              {/* Grid Productos */}
+              <div className="products-grid">
+                {filteredProductos.length === 0 ? (
+                  <div className="empty-state">
+                    <p>No se encontraron productos</p>
+                  </div>
+                ) : (
+                  filteredProductos.map((producto) => (
+                    <div key={producto.id} className="product-card">
+                      <div className="product-header">
+                        <span className="product-code">{producto.codigo}</span>
+                        {getStockBadge(producto.cantidad)}
+                      </div>
+                      <h3 className="product-name">{producto.codigo}</h3>
+                      <p className="product-category">{producto.categoria || 'Sin categoría'}</p>
+                      
+                      <div className="product-stats">
+                        <div className="stat">
+                          <span className="stat-label">Stock</span>
+                          <span className={`stat-value ${producto.cantidad < 10 ? 'warning' : ''}`}>
+                            {producto.cantidad} uds
+                          </span>
+                        </div>
+                        <div className="stat">
+                          <span className="stat-label">Precio</span>
+                          <span className="stat-value price">{formatCurrency(producto.precio_venta)}</span>
+                        </div>
+                      </div>
+
+                      <div className="product-actions">
+                        <button 
+                          className="action-btn edit"
+                          onClick={() => {
+                            setEditingProducto(producto);
+                            setIsProductoModalOpen(true);
+                          }}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                          </svg>
+                          Editar
+                        </button>
+                        <button 
+                          className="action-btn delete"
+                          onClick={() => handleDeleteProducto(producto.id)}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </main>
+
+      {/* Modal Pedido */}
+      {isPedidoModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsPedidoModalOpen(false)}>
+          <div className="modal premium" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Editar Pedido #{editingPedido?.id}</h3>
+              <button className="close-btn" onClick={() => setIsPedidoModalOpen(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              <div className="form-grid">
+                <div className="form-group">
+                  <label>Estado</label>
+                  <select 
+                    value={editingPedido?.estado} 
+                    onChange={(e) => setEditingPedido({...editingPedido, estado: e.target.value})}
+                  >
+                    <option value="pendiente">Pendiente</option>
+                    <option value="procesando">Procesando</option>
+                    <option value="enviado">Enviado</option>
+                    <option value="completado">Completado</option>
+                    <option value="cancelado">Cancelado</option>
+                  </select>
                 </div>
                 <div className="form-group">
-                  <label>Cantidad</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={editingOrder.quantity}
-                    onChange={(e) => setEditingOrder({...editingOrder, quantity: parseInt(e.target.value)})}
+                  <label>Teléfono</label>
+                  <input 
+                    type="tel" 
+                    value={editingPedido?.telefono_contacto || ''}
+                    onChange={(e) => setEditingPedido({...editingPedido, telefono_contacto: e.target.value})}
                   />
                 </div>
               </div>
-
               <div className="form-group">
-                <label>Total (€)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={editingOrder.total}
-                  onChange={(e) => setEditingOrder({...editingOrder, total: parseFloat(e.target.value)})}
+                <label>Dirección de Envío</label>
+                <input 
+                  type="text" 
+                  value={editingPedido?.direccion_envio || ''}
+                  onChange={(e) => setEditingPedido({...editingPedido, direccion_envio: e.target.value})}
                 />
               </div>
-
               <div className="form-group">
                 <label>Notas</label>
-                <textarea
-                  value={editingOrder.notes || ''}
-                  onChange={(e) => setEditingOrder({...editingOrder, notes: e.target.value})}
-                  placeholder="Notas adicionales sobre el pedido..."
+                <textarea 
+                  rows="3"
+                  value={editingPedido?.notas || ''}
+                  onChange={(e) => setEditingPedido({...editingPedido, notas: e.target.value})}
                 />
               </div>
             </div>
-
             <div className="modal-footer">
-              <button className="btn-secondary" onClick={() => setIsModalOpen(false)}>
-                Cancelar
-              </button>
-              <button className="btn-primary" onClick={handleSave}>
-                💾 Guardar Cambios
+              <button className="btn-secondary" onClick={() => setIsPedidoModalOpen(false)}>Cancelar</button>
+              <button className="btn-primary glow" onClick={handleSavePedido}>Guardar Cambios</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Producto */}
+      {(isProductoModalOpen || isNewProductoModalOpen) && (
+        <div className="modal-overlay" onClick={() => {
+          setIsProductoModalOpen(false);
+          setIsNewProductoModalOpen(false);
+        }}>
+          <div className="modal premium" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>{isNewProductoModalOpen ? 'Nuevo Producto' : 'Editar Producto'}</h3>
+              <button className="close-btn" onClick={() => {
+                setIsProductoModalOpen(false);
+                setIsNewProductoModalOpen(false);
+              }}>×</button>
+            </div>
+            <div className="modal-body">
+              <div className="form-grid">
+                <div className="form-group">
+                  <label>Código</label>
+                  <input 
+                    type="text" 
+                    value={editingProducto?.codigo || ''}
+                    onChange={(e) => setEditingProducto({...editingProducto, codigo: e.target.value})}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Categoría</label>
+                  <select 
+                    value={editingProducto?.categoria || ''}
+                    onChange={(e) => setEditingProducto({...editingProducto, categoria: e.target.value})}
+                  >
+                    <option value="">Seleccionar</option>
+                    <option value="electronica">Electrónica</option>
+                    <option value="ropa">Ropa</option>
+                    <option value="hogar">Hogar</option>
+                  </select>
+                </div>
+              </div>
+              <div className="form-grid three">
+                <div className="form-group">
+                  <label>Cantidad</label>
+                  <input 
+                    type="number" 
+                    value={editingProducto?.cantidad || 0}
+                    onChange={(e) => setEditingProducto({...editingProducto, cantidad: parseInt(e.target.value) || 0})}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Costo Unitario</label>
+                  <input 
+                    type="number" 
+                    step="0.01"
+                    value={editingProducto?.costo_unitario || 0}
+                    onChange={(e) => setEditingProducto({...editingProducto, costo_unitario: parseFloat(e.target.value) || 0})}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Precio Venta</label>
+                  <input 
+                    type="number" 
+                    step="0.01"
+                    value={editingProducto?.precio_venta || 0}
+                    onChange={(e) => setEditingProducto({...editingProducto, precio_venta: parseFloat(e.target.value) || 0})}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-secondary" onClick={() => {
+                setIsProductoModalOpen(false);
+                setIsNewProductoModalOpen(false);
+              }}>Cancelar</button>
+              <button 
+                className="btn-primary glow" 
+                onClick={() => handleSaveProducto(isNewProductoModalOpen)}
+              >
+                {isNewProductoModalOpen ? 'Crear Producto' : 'Guardar Cambios'}
               </button>
             </div>
           </div>
