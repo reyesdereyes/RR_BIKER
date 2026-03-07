@@ -7,7 +7,7 @@ import Contacto from './pages/Contacto';
 import Servicio from './pages/Servicio';
 import Login from './pages/Login';
 import Admin from './pages/Admin';
-import Carrito from './pages/carrito';
+import Carrito from './pages/Carrito';
 import ProductosCategoria from './pages/ProductosCategoria';
 
 
