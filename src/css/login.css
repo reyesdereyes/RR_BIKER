@@ -491,3 +491,40 @@
     animation: none;
   }
 }
+
+.register-toggle {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.toggle-btn {
+  background: transparent;
+  border: 1px solid rgba(220, 38, 38, 0.5);
+  color: #dc2626;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.toggle-btn:hover {
+  background: rgba(220, 38, 38, 0.1);
+  border-color: #dc2626;
+  box-shadow: 0 0 15px rgba(220, 38, 38, 0.3);
+}
+
+/* Estilos adicionales para el modo registro */
+.login-form.register-mode {
+  border-color: #dc2626;
+}
+
+.success-animation {
+  animation: successPulse 0.5s ease;
+}
+
+@keyframes successPulse {
+  0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); }
+  70% { box-shadow: 0 0 0 20px rgba(220, 38, 38, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+}

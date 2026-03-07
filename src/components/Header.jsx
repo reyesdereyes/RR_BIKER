@@ -1,6 +1,17 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { FaMotorcycle, FaMapMarkerAlt, FaEnvelope, FaSearch, FaShoppingCart, FaBolt } from "react-icons/fa";
+import { 
+  FaMotorcycle, 
+  FaMapMarkerAlt, 
+  FaEnvelope, 
+  FaSearch, 
+  FaShoppingCart, 
+  FaBolt, 
+  FaArrowRight, 
+  FaTrash, 
+  FaPlus, 
+  FaMinus 
+} from "react-icons/fa";
 import logo from "../assets/logo.svg";
 import "../css/Header.css";
 
@@ -11,6 +22,7 @@ const HeaderBar = () => {
   const [cartOpen, setCartOpen] = useState(false);
   const [cartCount, setCartCount] = useState(0);
   const [cartItems, setCartItems] = useState([]);
+  const [cartTotal, setCartTotal] = useState(0);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [suggestions] = useState([
@@ -27,19 +39,50 @@ const HeaderBar = () => {
   const navListRef = useRef(null);
   const linkRefs = useRef({});
 
-  useEffect(() => {
+  // Cargar carrito desde localStorage
+  const loadCart = () => {
     const savedCart = localStorage.getItem('rrbikerCart');
     if (savedCart) {
       const items = JSON.parse(savedCart);
       setCartItems(items);
-      setCartCount(items.reduce((sum, item) => sum + item.quantity, 0));
+      const count = items.reduce((sum, item) => sum + item.quantity, 0);
+      const total = items.reduce((sum, item) => sum + (item.precio_bs * item.quantity), 0);
+      setCartCount(count);
+      setCartTotal(total);
+    } else {
+      setCartItems([]);
+      setCartCount(0);
+      setCartTotal(0);
     }
-  }, []);
+  };
 
   useEffect(() => {
-    localStorage.setItem('rrbikerCart', JSON.stringify(cartItems));
-    setCartCount(cartItems.reduce((sum, item) => sum + item.quantity, 0));
-  }, [cartItems]);
+    loadCart();
+    
+    // Escuchar cambios en localStorage (de otras pestañas)
+    const handleStorageChange = (e) => {
+      if (e.key === 'rrbikerCart') {
+        loadCart();
+        setCartPulse(true);
+        setTimeout(() => setCartPulse(false), 900);
+      }
+    };
+    
+    // Escuchar evento personalizado (misma pestaña)
+    const handleCartUpdate = () => {
+      loadCart();
+      setCartPulse(true);
+      setTimeout(() => setCartPulse(false), 900);
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('rrbikerCartUpdated', handleCartUpdate);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('rrbikerCartUpdated', handleCartUpdate);
+    };
+  }, []);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 50);
@@ -108,12 +151,46 @@ const HeaderBar = () => {
     }
   };
 
+  // Funciones del carrito
+  const updateQuantity = (id, delta) => {
+    setCartItems(prev => {
+      const updated = prev.map(item => {
+        if (item.id === id) {
+          const newQuantity = Math.max(1, item.quantity + delta);
+          return { ...item, quantity: newQuantity };
+        }
+        return item;
+      });
+      localStorage.setItem('rrbikerCart', JSON.stringify(updated));
+      // Notificar a otros componentes
+      window.dispatchEvent(new Event('rrbikerCartUpdated'));
+      return updated;
+    });
+  };
+
+  const removeItem = (id) => {
+    setCartItems(prev => {
+      const updated = prev.filter(item => item.id !== id);
+      localStorage.setItem('rrbikerCart', JSON.stringify(updated));
+      // Notificar a otros componentes
+      window.dispatchEvent(new Event('rrbikerCartUpdated'));
+      return updated;
+    });
+  };
+
+  const formatBs = (valor) => {
+    return new Intl.NumberFormat('es-VE', {
+      style: 'currency',
+      currency: 'VES',
+      minimumFractionDigits: 2
+    }).format(valor || 0);
+  };
+
   const navItems = [
     { key: "inicio", label: "INICIO", to: "/" },
     { key: "productos", label: "PRODUCTOS", to: "/productos" },
     { key: "servicio", label: "SERVICIO", to: "/servicio" },
     { key: "contacto", label: "CONTACTO", to: "/contacto" },
-    // enlace rápido a la zona de administración
     { key: "login", label: "ADMIN", to: "/login" }
   ];
 
@@ -221,8 +298,6 @@ const HeaderBar = () => {
                 onClick={e => {
                   e.stopPropagation();
                   setCartOpen(s => !s);
-                  setCartPulse(true);
-                  setTimeout(() => setCartPulse(false), 900);
                 }}
                 aria-label="Carrito"
               >
@@ -237,9 +312,12 @@ const HeaderBar = () => {
                 <span className="cart-text">CARRITO</span>
               </button>
 
-              {/* MINI CARRITO */}
+              {/* MINI CARRITO MEJORADO */}
               {cartOpen && (
-                <div className={`mini-cart-panel ${cartCount === 0 ? "empty" : ""}`}>
+                <div 
+                  className={`mini-cart-panel ${cartCount === 0 ? "empty" : ""}`} 
+                  onClick={e => e.stopPropagation()}
+                >
                   {cartCount === 0 ? (
                     <div className="cart-empty-state">
                       <div className="empty-icon"><FaShoppingCart /></div>
@@ -255,9 +333,49 @@ const HeaderBar = () => {
                         <span className="cart-title">TU CARRITO</span>
                         <span className="cart-items-count">{cartCount} ITEMS</span>
                       </div>
-                      <Link to="/carrito" className="btn-cart-action primary" onClick={() => setCartOpen(false)}>
-                        VER CARRITO COMPLETO <FaArrowRight />
-                      </Link>
+                      
+                      <div className="cart-items-list">
+                        {cartItems.map(item => (
+                          <div key={item.id} className="cart-item">
+                            <div className="item-info">
+                              <span className="item-name">{item.nombre}</span>
+                              <span className="item-price">{formatBs(item.precio_bs)}</span>
+                            </div>
+                            <div className="item-controls">
+                              <button 
+                                className="qty-btn"
+                                onClick={() => updateQuantity(item.id, -1)}
+                                disabled={item.quantity <= 1}
+                              >
+                                <FaMinus />
+                              </button>
+                              <span className="qty-value">{item.quantity}</span>
+                              <button 
+                                className="qty-btn"
+                                onClick={() => updateQuantity(item.id, 1)}
+                              >
+                                <FaPlus />
+                              </button>
+                              <button 
+                                className="remove-btn"
+                                onClick={() => removeItem(item.id)}
+                              >
+                                <FaTrash />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      <div className="cart-footer">
+                        <div className="cart-total">
+                          <span>TOTAL</span>
+                          <span className="total-amount">{formatBs(cartTotal)}</span>
+                        </div>
+                        <Link to="/carrito" className="btn-cart-action primary" onClick={() => setCartOpen(false)}>
+                          VER CARRITO COMPLETO <FaArrowRight />
+                        </Link>
+                      </div>
                     </div>
                   )}
                 </div>

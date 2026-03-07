@@ -1,14 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom'; // AGREGADO para navegación
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import supabase from '../conf/supabase';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import { FaMotorcycle, FaExclamationTriangle, FaArrowRight, FaShoppingCart } from 'react-icons/fa';
+import { 
+  FaMotorcycle, 
+  FaExclamationTriangle, 
+  FaShoppingCart,
+  FaSearch,
+  FaSpinner,
+  FaChevronLeft,
+  FaChevronRight,
+  FaBox,
+  FaArrowRight,
+  FaCheck
+} from 'react-icons/fa';
 import '../css/producto.css';
 
 const Productos = () => {
   const [activeCategory, setActiveCategory] = useState('todos');
   const [hoveredProduct, setHoveredProduct] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [loadingCategory, setLoadingCategory] = useState(false);
   
   const [categorias, setCategorias] = useState([]);
   const [productos, setProductos] = useState([]);
@@ -16,128 +29,184 @@ const Productos = () => {
   const [error, setError] = useState(null);
   const [totalCount, setTotalCount] = useState(0);
   
-  const navigate = useNavigate(); // AGREGADO para navegación
+  // Estado para mostrar feedback cuando se agrega al carrito
+  const [addedProduct, setAddedProduct] = useState(null);
+  
+  const categoryScrollRef = useRef(null);
+  const navigate = useNavigate();
 
-  // Suscripción realtime
-  useEffect(() => {
-    const subscription = supabase
-      .channel('productos_changes')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'productos' },
-        (payload) => {
-          console.log('Cambio detectado:', payload);
-          loadProductos(activeCategory);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [activeCategory]);
-
-  // Cargar categorías
+  // Cargar datos iniciales
   useEffect(() => {
     loadCategorias();
   }, []);
 
+  // Cargar productos cuando cambia categoría o búsqueda
+  useEffect(() => {
+    if (categorias.length > 0) {
+      loadProductos(activeCategory, searchTerm);
+    }
+  }, [activeCategory, searchTerm]);
+
+  // Scroll categorías
+  const scrollCategories = (direction) => {
+    if (categoryScrollRef.current) {
+      const scrollAmount = 300;
+      categoryScrollRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  // Cargar categorías
   const loadCategorias = async () => {
     try {
-      // MODIFICADO: Usar tu tabla simple de categorias
       const { data: categoriasData, error: catError } = await supabase
-        .from('categorias')
-        .select('*')
-        .eq('activa', true)
-        .order('orden');
+        .from('productos_categorias')
+        .select('categoria');
 
       if (catError) throw catError;
 
-      // Contar productos por categoría
-      const { data: allProductos, error: prodError } = await supabase
-        .from('productos')
-        .select('categoria_id')
-        .eq('activo', true);
-
-      if (prodError) throw prodError;
-
-      // Contar productos por cada categoría
       const conteos = {};
-      allProductos.forEach(prod => {
-        conteos[prod.categoria_id] = (conteos[prod.categoria_id] || 0) + 1;
-      });
+      const categoriasUnicas = [...new Set(categoriasData.map(item => item.categoria))];
+      
+      for (const cat of categoriasUnicas) {
+        const { count } = await supabase
+          .from('productos_categorias')
+          .select('*', { count: 'exact', head: true })
+          .eq('categoria', cat);
+        conteos[cat] = count || 0;
+      }
 
-      const totalProductos = allProductos.length;
+      const { count: totalProductos } = await supabase
+        .from('productos')
+        .select('*', { count: 'exact', head: true });
 
       const categoriasFormateadas = [
         { 
           id: 'todos', 
           nombre: 'TODOS', 
-          icono: <FaMotorcycle />, 
           slug: 'todos', 
-          count: totalProductos,
-          imagen: null
+          count: totalProductos || 0,
+          icono: <FaBox />
         },
-        ...categoriasData.map(cat => ({
-          id: cat.id, // MODIFICADO: usar id numérico
-          nombre: cat.nombre.toUpperCase(),
-          icono: <FaMotorcycle />,
-          slug: cat.slug,
-          count: conteos[cat.id] || 0,
-          imagen: cat.imagen // AGREGADO: imagen de categoría
+        ...categoriasUnicas.map((cat) => ({
+          id: cat,
+          nombre: cat.toUpperCase(),
+          slug: cat.toLowerCase().replace(/\s+/g, '-'),
+          count: conteos[cat] || 0,
+          icono: <FaMotorcycle />
         }))
       ];
 
       setCategorias(categoriasFormateadas);
-      setTotalCount(totalProductos);
+      setTotalCount(totalProductos || 0);
+      loadProductos('todos');
     } catch (err) {
       console.error('Error cargando categorías:', err);
       setError('Error al cargar categorías: ' + err.message);
     }
   };
 
-  // Cargar productos - MODIFICADO para tabla simple
-  const loadProductos = async (categoriaId) => {
+  // Cargar productos - CORREGIDO PARA ELIMINAR DUPLICADOS
+  const loadProductos = async (categoria, busqueda = '') => {
     setLoading(true);
-    setError(null);
+    setLoadingCategory(true);
 
     try {
-      // MODIFICADO: Query simplificado para tu estructura de tablas
-      let query = supabase
-        .from('productos')
-        .select(`
-          *,
-          categorias(nombre, slug, imagen)
-        `)
-        .eq('activo', true)
-        .order('created_at', { ascending: false });
+      let productosFormateados = [];
 
-      // Filtrar por categoría si no es 'todos'
-      if (categoriaId !== 'todos') {
-        query = query.eq('categoria_id', categoriaId); // MODIFICADO: filtrar por ID numérico
+      if (categoria === 'todos') {
+        const { data: prodCatData } = await supabase
+          .from('productos_categorias')
+          .select('codigo, nombre, categoria');
+
+        // ELIMINAR DUPLICADOS POR CÓDIGO - mantener solo el primero
+        const uniqueProducts = [];
+        const seenCodes = new Set();
+        
+        for (const prod of prodCatData || []) {
+          if (!seenCodes.has(prod.codigo)) {
+            seenCodes.add(prod.codigo);
+            uniqueProducts.push(prod);
+          }
+        }
+
+        const codigos = uniqueProducts.map(p => p.codigo);
+        
+        const { data: preciosData } = await supabase
+          .from('productos')
+          .select('codigo, precio_venta_bs, cantidad')
+          .in('codigo', codigos);
+
+        productosFormateados = uniqueProducts.map(prod => {
+          const precioInfo = preciosData?.find(p => p.codigo === prod.codigo);
+          return {
+            id: prod.codigo,
+            nombre: prod.nombre || prod.codigo,
+            categoria: prod.categoria,
+            precio_bs: parseFloat(precioInfo?.precio_venta_bs) || 0,
+            cantidad: precioInfo?.cantidad || 0,
+            disponible: (precioInfo?.cantidad || 0) > 0
+          };
+        });
+
+        if (busqueda) {
+          productosFormateados = productosFormateados.filter(p => 
+            p.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
+            p.categoria.toLowerCase().includes(busqueda.toLowerCase())
+          );
+        }
+
+      } else {
+        const { data: prodCatData } = await supabase
+          .from('productos_categorias')
+          .select('codigo, nombre, categoria')
+          .eq('categoria', categoria);
+
+        // ELIMINAR DUPLICADOS POR CÓDIGO - mantener solo el primero
+        const uniqueProducts = [];
+        const seenCodes = new Set();
+        
+        for (const prod of prodCatData || []) {
+          if (!seenCodes.has(prod.codigo)) {
+            seenCodes.add(prod.codigo);
+            uniqueProducts.push(prod);
+          }
+        }
+
+        if (uniqueProducts.length === 0) {
+          setProductos([]);
+          setLoading(false);
+          setLoadingCategory(false);
+          return;
+        }
+
+        const codigos = uniqueProducts.map(p => p.codigo);
+        
+        const { data: preciosData } = await supabase
+          .from('productos')
+          .select('codigo, precio_venta_bs, cantidad')
+          .in('codigo', codigos);
+
+        productosFormateados = uniqueProducts.map(prod => {
+          const precioInfo = preciosData?.find(p => p.codigo === prod.codigo);
+          return {
+            id: prod.codigo,
+            nombre: prod.nombre || prod.codigo,
+            categoria: prod.categoria,
+            precio_bs: parseFloat(precioInfo?.precio_venta_bs) || 0,
+            cantidad: precioInfo?.cantidad || 0,
+            disponible: (precioInfo?.cantidad || 0) > 0
+          };
+        });
+
+        if (busqueda) {
+          productosFormateados = productosFormateados.filter(p => 
+            p.nombre.toLowerCase().includes(busqueda.toLowerCase())
+          );
+        }
       }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-
-      console.log('Productos cargados:', data);
-
-      const productosFormateados = data.map(prod => {
-        return {
-          id: prod.id,
-          nombre: prod.nombre,
-          descripcion: prod.descripcion, // AGREGADO
-          categoria: prod.categorias?.slug,
-          categoriaNombre: prod.categorias?.nombre,
-          categoriaId: prod.categoria_id, // AGREGADO para navegación
-          precio: parseFloat(prod.precio) || 0,
-          // MODIFICADO: usar imagen directa de la tabla
-          imagenUrl: prod.imagen || null,
-          stock: prod.stock || 0,
-          sku: prod.sku || null,
-          slug: prod.id.toString() // AGREGADO para URL amigable
-        };
-      });
 
       setProductos(productosFormateados);
     } catch (err) {
@@ -145,52 +214,70 @@ const Productos = () => {
       setError('Error al cargar productos: ' + err.message);
     } finally {
       setLoading(false);
+      setLoadingCategory(false);
     }
   };
 
-  // Cargar productos cuando cambia categoría
-  useEffect(() => {
-    if (categorias.length > 0) {
-      loadProductos(activeCategory);
-    }
-  }, [activeCategory, categorias]);
-
-  // MODIFICADO: Navegar a página de categoría en lugar de filtrar local
-  const handleCategoryChange = (categoryId) => {
-    if (categoryId === 'todos') {
-      setActiveCategory('todos');
-      loadProductos('todos');
-    } else {
-      // Navegar a página de categoría específica
-      const categoria = categorias.find(c => c.id === categoryId);
-      if (categoria) {
-        navigate(`/productos-categoria/${categoria.slug}`);
-      }
-    }
+  const handleCategoryChange = (categoriaId) => {
+    if (categoriaId === activeCategory) return;
+    setActiveCategory(categoriaId);
+    setSearchTerm('');
   };
 
-  // AGREGADO: Función para ver detalle de producto
-  const handleProductClick = (producto) => {
-    navigate(`/producto/${producto.slug || producto.id}`);
-  };
-
-  // AGREGADO: Función para agregar al carrito (sin navegar)
+  // Función mejorada para agregar al carrito
   const handleAddToCart = (e, producto) => {
-    e.stopPropagation(); // Evitar que se abra el producto
-    // Aquí tu lógica de carrito
+    e.stopPropagation();
+    
+    if (!producto.disponible) return;
+
+    // Obtener carrito actual del localStorage
+    const savedCart = localStorage.getItem('rrbikerCart');
+    let currentCart = savedCart ? JSON.parse(savedCart) : [];
+
+    // Buscar si el producto ya existe en el carrito
+    const existingItemIndex = currentCart.findIndex(item => item.id === producto.id);
+
+    if (existingItemIndex >= 0) {
+      // Si existe, aumentar cantidad
+      currentCart[existingItemIndex].quantity += 1;
+    } else {
+      // Si no existe, agregar nuevo item
+      currentCart.push({
+        id: producto.id,
+        nombre: producto.nombre,
+        categoria: producto.categoria,
+        precio_bs: producto.precio_bs,
+        quantity: 1,
+        addedAt: new Date().toISOString()
+      });
+    }
+
+    // Guardar en localStorage
+    localStorage.setItem('rrbikerCart', JSON.stringify(currentCart));
+
+    // Disparar evento personalizado para notificar al Header
+    window.dispatchEvent(new Event('rrbikerCartUpdated'));
+
+    // Mostrar feedback visual
+    setAddedProduct(producto.id);
+    setTimeout(() => setAddedProduct(null), 1500);
+
     console.log('Agregado al carrito:', producto);
   };
 
-  const renderStars = (rating) => {
-    // Simplificado ya que no tienes rating en tu tabla
-    return '★★★★★';
+  const formatBs = (valor) => {
+    return new Intl.NumberFormat('es-VE', {
+      style: 'currency',
+      currency: 'VES',
+      minimumFractionDigits: 2
+    }).format(valor || 0);
   };
 
   if (error) {
     return (
       <>
         <Header />
-        <div className="error-container" style={{ padding: '100px 20px', textAlign: 'center' }}>
+        <div className="error-container">
           <h2><FaExclamationTriangle /> {error}</h2>
           <button 
             onClick={() => {
@@ -198,7 +285,6 @@ const Productos = () => {
               loadProductos(activeCategory);
             }} 
             className="btn-retry"
-            style={{ marginTop: '20px', padding: '10px 20px', cursor: 'pointer' }}
           >
             Reintentar
           </button>
@@ -208,11 +294,15 @@ const Productos = () => {
     );
   }
 
+  const categoriaActivaNombre = activeCategory === 'todos' 
+    ? 'TODOS LOS PRODUCTOS' 
+    : activeCategory.toUpperCase();
+
   return (
     <>
       <Header />
       
-      {/* HERO */}
+      {/* HERO COMPACTO */}
       <section className="prod-hero">
         <div className="prod-hero-bg">
           <div className="grid-overlay"></div>
@@ -245,205 +335,174 @@ const Productos = () => {
         </div>
       </section>
 
-      {/* CATEGORÍAS */}
-      <section className="cat-panel">
+      {/* CATEGORÍAS - HORIZONTAL SCROLL */}
+      <section className="categories-section">
         <div className="container">
-          <div className="cat-header">
-            <span className="cat-section-tag">NAVEGACIÓN</span>
-            <h2 className="cat-section-title">CATEGORÍAS DESTACADAS</h2>
+          <div className="categories-header">
+            <span className="cat-label">CATEGORÍAS</span>
+            <div className="scroll-hint">
+              <FaArrowRight /> Desliza para ver más
+            </div>
           </div>
           
-          <div className="cat-grid">
-            {categorias.map(cat => (
-              <button
-                key={cat.id}
-                className={`cat-card ${activeCategory === cat.id ? 'active' : ''}`}
-                onClick={() => handleCategoryChange(cat.id)}
-                disabled={loading}
-              >
-                <div className="cat-icon-box">
-                  {/* MODIFICADO: Mostrar imagen de categoría si existe */}
-                  {cat.imagen ? (
-                    <img 
-                      src={cat.imagen} 
-                      alt={cat.nombre}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '12px' }}
-                    />
-                  ) : (
-                    <span className="cat-emoji">{cat.icono}</span>
+          <div className="categories-scroll-container">
+            <button 
+              className="scroll-btn left"
+              onClick={() => scrollCategories('left')}
+            >
+              <FaChevronLeft />
+            </button>
+            
+            <div className="categories-track" ref={categoryScrollRef}>
+              {categorias.map((cat, index) => (
+                <button
+                  key={cat.id}
+                  className={`category-item ${activeCategory === cat.id ? 'active' : ''}`}
+                  onClick={() => handleCategoryChange(cat.id)}
+                  disabled={loadingCategory}
+                  style={{ animationDelay: `${index * 0.05}s` }}
+                >
+                  <div className="cat-icon">
+                    {cat.icono}
+                  </div>
+                  <div className="cat-details">
+                    <span className="cat-name">{cat.nombre}</span>
+                    <span className="cat-count">{cat.count} productos</span>
+                  </div>
+                  {activeCategory === cat.id && (
+                    <div className="active-indicator"></div>
                   )}
-                  <div className="cat-glow"></div>
-                </div>
-                <div className="cat-info">
-                  <span className="cat-name">{cat.nombre}</span>
-                  <span className="cat-count">{cat.count} items</span>
-                </div>
-                {activeCategory === cat.id && <div className="cat-active-bar"></div>}
-              </button>
-            ))}
+                </button>
+              ))}
+            </div>
+            
+            <button 
+              className="scroll-btn right"
+              onClick={() => scrollCategories('right')}
+            >
+              <FaChevronRight />
+            </button>
+          </div>
+
+          {/* LOADING BAR */}
+          {loadingCategory && (
+            <div className="loading-bar-container">
+              <div className="loading-bar">
+                <div className="loading-progress"></div>
+              </div>
+              <span className="loading-text">
+                <FaSpinner className="spin" /> Cargando {categoriaActivaNombre}...
+              </span>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* BÚSQUEDA */}
+      <section className="search-section">
+        <div className="container">
+          <div className="search-wrapper">
+            <div className="search-box">
+              <FaSearch className="search-icon" />
+              <input 
+                type="text" 
+                placeholder={`Buscar en ${categoriaActivaNombre.toLowerCase()}...`}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="search-input"
+                disabled={loadingCategory}
+              />
+              {searchTerm && !loadingCategory && (
+                <button 
+                  className="clear-search" 
+                  onClick={() => setSearchTerm('')}
+                >
+                  ×
+                </button>
+              )}
+            </div>
+            <div className="results-badge">
+              {productos.length} productos
+            </div>
           </div>
         </div>
       </section>
 
-      {/* PRODUCTOS */}
-      <section className="products-showcase">
+      {/* PRODUCTOS - MÁS CARDS POR FILA */}
+      <section className="products-section">
         <div className="container">
-          <div className="showcase-header">
-            <div className="showcase-title">
-              <span className="title-line"></span>
-              <h3>
-                {activeCategory === 'todos' ? 'TODOS LOS PRODUCTOS' : 
-                  categorias.find(c => c.id === activeCategory)?.nombre}
-              </h3>
-              <span className="title-line"></span>
-            </div>
-            <div className="showcase-filters">
-              <span className="results-count">
-                {loading ? 'Cargando...' : `${productos.length} resultados`}
-              </span>
-              <select className="sort-select" disabled={loading}>
-                <option>ORDENAR POR</option>
-                <option>Precio: Menor a Mayor</option>
-                <option>Precio: Mayor a Menor</option>
-                <option>Más recientes</option>
-              </select>
-            </div>
-          </div>
-
           {loading ? (
-            <div className="loading-grid">
-              {[1,2,3,4,5,6].map(i => (
-                <div key={i} className="skeleton-card" />
+            <div className="products-grid-compact">
+              {[1,2,3,4,5,6,7,8].map(i => (
+                <div key={i} className="skeleton-card-compact" />
               ))}
             </div>
           ) : (
-            <div className="products-grid">
+            <div className="products-grid-compact">
               {productos.map((prod, idx) => (
                 <div 
-                  key={prod.id} 
-                  className={`product-card ${hoveredProduct === prod.id ? 'hovered' : ''}`}
+                  key={`${prod.id}-${idx}`}  // KEY ÚNICA USANDO ÍNDICE COMO RESPALDO
+                  className={`product-card-compact ${hoveredProduct === prod.id ? 'hovered' : ''} ${!prod.disponible ? 'out-of-stock' : ''} ${addedProduct === prod.id ? 'added-to-cart' : ''}`}
                   onMouseEnter={() => setHoveredProduct(prod.id)}
                   onMouseLeave={() => setHoveredProduct(null)}
-                  style={{ animationDelay: `${idx * 0.1}s` }}
-                  onClick={() => handleProductClick(prod)} // AGREGADO: click para ver detalle
+                  style={{ animationDelay: `${idx * 0.03}s` }}
                 >
-                  {/* REMOVIDO: badge ya que no está en tu tabla */}
-
-                  <div className="prod-image">
-                    <div className="image-frame">
-                      {prod.imagenUrl ? (
-                        <img 
-                          src={prod.imagenUrl} 
-                          alt={prod.nombre}
-                          loading="lazy"
-                          onError={(e) => {
-                            e.target.onerror = null;
-                            e.target.src = '/placeholder-moto.jpg';
-                          }}
-                        />
+                  <div className="card-header">
+                    <span className="category-tag">{prod.categoria}</span>
+                    {!prod.disponible && <span className="stock-tag">AGOTADO</span>}
+                    {addedProduct === prod.id && (
+                      <span className="added-tag"><FaCheck /> AGREGADO</span>
+                    )}
+                  </div>
+                  
+                  <div className="card-image">
+                    <FaMotorcycle />
+                  </div>
+                  
+                  <div className="card-content">
+                    <h4 className="product-title" title={prod.nombre}>
+                      {prod.nombre}
+                    </h4>
+                    
+                    <div className="price-tag">
+                      {formatBs(prod.precio_bs)}
+                    </div>
+                    
+                    <button 
+                      className={`btn-buy ${addedProduct === prod.id ? 'success' : ''}`}
+                      onClick={(e) => handleAddToCart(e, prod)}
+                      disabled={!prod.disponible}
+                    >
+                      {addedProduct === prod.id ? (
+                        <><FaCheck /> AGREGADO</>
                       ) : (
-                        <span className="prod-emoji" style={{ fontSize: '4rem' }}>
-                          <FaMotorcycle />
-                        </span>
+                        <><FaShoppingCart /> {prod.disponible ? 'AGREGAR' : 'SIN STOCK'}</>
                       )}
-                      <div className="image-overlay">
-                        <button className="quick-view">VER DETALLE</button>
-                      </div>
-                    </div>
-                    <div className="stock-indicator">
-                      <span className={`stock-dot ${prod.stock < 10 ? 'low' : ''}`}></span>
-                      {prod.stock < 10 ? `¡SOLO ${prod.stock}!` : 'EN STOCK'}
-                    </div>
+                    </button>
                   </div>
-
-                  <div className="prod-info">
-                    <div className="prod-rating">
-                      <span className="stars">{renderStars()}</span>
-                      {/* Simplificado sin rating numérico */}
-                    </div>
-                    
-                    {/* AGREGADO: SKU si existe */}
-                    {prod.sku && (
-                      <span className="prod-brand">SKU: {prod.sku}</span>
-                    )}
-                    
-                    <h4 className="prod-name">{prod.nombre}</h4>
-                    
-                    {/* AGREGADO: Descripción corta */}
-                    {prod.descripcion && (
-                      <p style={{ 
-                        color: 'rgba(255,255,255,0.6)', 
-                        fontSize: '0.85rem', 
-                        marginBottom: '10px',
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden'
-                      }}>
-                        {prod.descripcion}
-                      </p>
-                    )}
-                    
-                    <div className="prod-specs">
-                      {/* Simplificado sin specs */}
-                      <span className="spec-tag">{prod.categoriaNombre}</span>
-                    </div>
-
-                    <div className="prod-footer">
-                      <div className="price-block">
-                        <span className="price-current">${prod.precio}</span>
-                      </div>
-                      {/* MODIFICADO: Agregar al carrito sin navegar */}
-                      <button 
-                        className="btn-add-cart"
-                        onClick={(e) => handleAddToCart(e, prod)}
-                      >
-                        <span className="cart-icon"><FaShoppingCart /></span>
-                        <span className="add-text">AGREGAR</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="card-shine"></div>
-                  <div className="card-border"></div>
                 </div>
               ))}
             </div>
           )}
 
           {!loading && productos.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-              <p>No se encontraron productos en esta categoría.</p>
-            </div>
-          )}
-
-          {!loading && productos.length > 0 && (
-            <div className="pagination">
-              <button className="page-btn prev">← ANTERIOR</button>
-              <div className="page-numbers">
-                <span className="page-num active">1</span>
-                <span className="page-num">2</span>
-                <span className="page-num">3</span>
-                <span className="page-dots">...</span>
+            <div className="empty-state-compact">
+              <FaSearch className="empty-icon" />
+              <p>No se encontraron productos</p>
+              <div className="empty-actions">
+                {searchTerm && (
+                  <button className="btn-action" onClick={() => setSearchTerm('')}>
+                    Limpiar búsqueda
+                  </button>
+                )}
+                {activeCategory !== 'todos' && (
+                  <button className="btn-action secondary" onClick={() => handleCategoryChange('todos')}>
+                    Ver todos
+                  </button>
+                )}
               </div>
-              <button className="page-btn next">SIGUIENTE <FaArrowRight /></button>
             </div>
           )}
-        </div>
-      </section>
-
-      <section className="prod-newsletter">
-        <div className="container">
-          <div className="news-content">
-            <div className="news-text">
-              <h3>🔔 OFERTAS EXCLUSIVAS</h3>
-              <p>Suscríbete y recibe descuentos de hasta 30% en repuestos premium</p>
-            </div>
-            <form className="news-form">
-              <input type="email" placeholder="Tu correo electrónico" />
-              <button type="submit">SUSCRIBIRSE</button>
-            </form>
-          </div>
         </div>
       </section>
 

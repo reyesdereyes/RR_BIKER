@@ -7,7 +7,9 @@ import Contacto from './pages/Contacto';
 import Servicio from './pages/Servicio';
 import Login from './pages/Login';
 import Admin from './pages/Admin';
+import Carrito from './pages/carrito';
 import ProductosCategoria from './pages/ProductosCategoria';
+
 
 
 
@@ -24,6 +26,7 @@ function App() {
         <Route path='/contacto' element={<Contacto />} />
         <Route path='/servicio' element={<Servicio />} />
         <Route path='/productos-categoria' element={<ProductosCategoria />} />
+        <Route path='/carrito'element={<Carrito />} />
         {/* Alias plural para evitar errores de navegación */}
         <Route path='/servicios' element={<Navigate to="/servicio" replace />} />
         {/* auth routes */}
