@@ -86,6 +86,9 @@ const Inicio = () => {
     <>
       <Header />
 
+      <br />
+      <br />
+
       {/* HERO SECTION - PARALLAX */}
       <section className="ini-hero">
         <div className="ini-hero-bg" style={{ transform: `translateY(${scrollY * 0.3}px)` }}>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import supabase from '../conf/supabase';
 import Header from '../components/Header';
@@ -13,9 +13,12 @@ import {
   FaChevronRight,
   FaBox,
   FaArrowRight,
-  FaCheck
+  FaCheck,
+  FaDollarSign
 } from 'react-icons/fa';
 import '../css/producto.css';
+
+const PRODUCTOS_POR_PAGINA = 12;
 
 const Productos = () => {
   const [activeCategory, setActiveCategory] = useState('todos');
@@ -29,25 +32,72 @@ const Productos = () => {
   const [error, setError] = useState(null);
   const [totalCount, setTotalCount] = useState(0);
   
-  // Estado para mostrar feedback cuando se agrega al carrito
   const [addedProduct, setAddedProduct] = useState(null);
   
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  
+  const [tasaDolar, setTasaDolar] = useState(null);
+  const [loadingTasa, setLoadingTasa] = useState(true);
+  
   const categoryScrollRef = useRef(null);
+  const observerRef = useRef(null);
   const navigate = useNavigate();
 
-  // Cargar datos iniciales
+  useEffect(() => {
+    fetchTasaDolar();
+    const interval = setInterval(fetchTasaDolar, 300000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchTasaDolar = async () => {
+    try {
+      setLoadingTasa(true);
+      const response = await fetch('https://ve.dolarapi.com/v1/dolares/oficial');
+      if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
+      const data = await response.json();
+      setTasaDolar(data);
+      console.log('Tasa del dólar:', data);
+    } catch (err) {
+      console.error('Error tasa:', err);
+    } finally {
+      setLoadingTasa(false);
+    }
+  };
+
   useEffect(() => {
     loadCategorias();
   }, []);
 
-  // Cargar productos cuando cambia categoría o búsqueda
   useEffect(() => {
+    setPage(1);
+    setProductos([]);
+    setHasMore(true);
     if (categorias.length > 0) {
-      loadProductos(activeCategory, searchTerm);
+      loadProductos(activeCategory, searchTerm, 1, true);
     }
-  }, [activeCategory, searchTerm]);
+  }, [activeCategory, searchTerm, categorias]);
 
-  // Scroll categorías
+  const lastProductRef = useCallback((node) => {
+    if (loadingMore || loading) return;
+    if (observerRef.current) observerRef.current.disconnect();
+    
+    observerRef.current = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && hasMore) {
+        setPage((prevPage) => prevPage + 1);
+      }
+    });
+    
+    if (node) observerRef.current.observe(node);
+  }, [loadingMore, hasMore, loading]);
+
+  useEffect(() => {
+    if (page > 1 && hasMore) {
+      loadProductos(activeCategory, searchTerm, page, false);
+    }
+  }, [page]);
+
   const scrollCategories = (direction) => {
     if (categoryScrollRef.current) {
       const scrollAmount = 300;
@@ -58,219 +108,200 @@ const Productos = () => {
     }
   };
 
-  // Cargar categorías
   const loadCategorias = async () => {
     try {
-      const { data: categoriasData, error: catError } = await supabase
+      const { data: categoriasData, error } = await supabase
         .from('productos_categorias')
-        .select('categoria');
+        .select('categoria')
+        .not('categoria', 'is', null)
+        .order('categoria');
 
-      if (catError) throw catError;
+      if (error) throw error;
 
-      const conteos = {};
-      const categoriasUnicas = [...new Set(categoriasData.map(item => item.categoria))];
-      
-      for (const cat of categoriasUnicas) {
-        const { count } = await supabase
-          .from('productos_categorias')
-          .select('*', { count: 'exact', head: true })
-          .eq('categoria', cat);
-        conteos[cat] = count || 0;
+      if (!categoriasData?.length) {
+        setCategorias([{ id: 'todos', nombre: 'TODOS', slug: 'todos', count: 0, icono: <FaBox /> }]);
+        setTotalCount(0);
+        return;
       }
 
-      const { count: totalProductos } = await supabase
+      const categoriasUnicas = [...new Set(categoriasData.map(item => item.categoria))];
+      
+      const conteos = await Promise.all(
+        categoriasUnicas.map(async (cat) => {
+          const { count } = await supabase
+            .from('productos_categorias')
+            .select('codigo', { count: 'exact', head: true })
+            .eq('categoria', cat);
+          return [cat, count || 0];
+        })
+      );
+      const conteosObj = Object.fromEntries(conteos);
+
+      const { count: total } = await supabase
         .from('productos')
         .select('*', { count: 'exact', head: true });
 
       const categoriasFormateadas = [
-        { 
-          id: 'todos', 
-          nombre: 'TODOS', 
-          slug: 'todos', 
-          count: totalProductos || 0,
-          icono: <FaBox />
-        },
-        ...categoriasUnicas.map((cat) => ({
+        { id: 'todos', nombre: 'TODOS', slug: 'todos', count: total || 0, icono: <FaBox /> },
+        ...categoriasUnicas.map(cat => ({
           id: cat,
           nombre: cat.toUpperCase(),
           slug: cat.toLowerCase().replace(/\s+/g, '-'),
-          count: conteos[cat] || 0,
+          count: conteosObj[cat] || 0,
           icono: <FaMotorcycle />
         }))
       ];
 
       setCategorias(categoriasFormateadas);
-      setTotalCount(totalProductos || 0);
-      loadProductos('todos');
+      setTotalCount(total || 0);
     } catch (err) {
-      console.error('Error cargando categorías:', err);
-      setError('Error al cargar categorías: ' + err.message);
+      console.error('Error categorías:', err);
+      setCategorias([{ id: 'todos', nombre: 'TODOS', count: 0, icono: <FaBox /> }]);
     }
   };
 
-  // Cargar productos - CORREGIDO PARA ELIMINAR DUPLICADOS
-  const loadProductos = async (categoria, busqueda = '') => {
-    setLoading(true);
+  // ============================================
+  // VUELTA A 2 QUERIES - FUNCIONA COMO ORIGINAL PERO OPTIMIZADO
+  // ============================================
+  const loadProductos = async (categoria, busqueda = '', pageNum = 1, reset = false) => {
+    if (pageNum === 1) setLoading(true);
+    else setLoadingMore(true);
     setLoadingCategory(true);
 
     try {
-      let productosFormateados = [];
+      const from = (pageNum - 1) * PRODUCTOS_POR_PAGINA;
+      const to = from + PRODUCTOS_POR_PAGINA - 1;
 
-      if (categoria === 'todos') {
-        const { data: prodCatData } = await supabase
-          .from('productos_categorias')
-          .select('codigo, nombre, categoria');
+      // PASO 1: Obtener códigos y datos básicos de productos_categorias
+      let query = supabase
+        .from('productos_categorias')
+        .select('codigo, nombre, categoria')
+        .order('nombre', { ascending: true })
+        .range(from, to);
 
-        // ELIMINAR DUPLICADOS POR CÓDIGO - mantener solo el primero
-        const uniqueProducts = [];
-        const seenCodes = new Set();
-        
-        for (const prod of prodCatData || []) {
-          if (!seenCodes.has(prod.codigo)) {
-            seenCodes.add(prod.codigo);
-            uniqueProducts.push(prod);
-          }
-        }
-
-        const codigos = uniqueProducts.map(p => p.codigo);
-        
-        const { data: preciosData } = await supabase
-          .from('productos')
-          .select('codigo, precio_venta_bs, cantidad')
-          .in('codigo', codigos);
-
-        productosFormateados = uniqueProducts.map(prod => {
-          const precioInfo = preciosData?.find(p => p.codigo === prod.codigo);
-          return {
-            id: prod.codigo,
-            nombre: prod.nombre || prod.codigo,
-            categoria: prod.categoria,
-            precio_bs: parseFloat(precioInfo?.precio_venta_bs) || 0,
-            cantidad: precioInfo?.cantidad || 0,
-            disponible: (precioInfo?.cantidad || 0) > 0
-          };
-        });
-
-        if (busqueda) {
-          productosFormateados = productosFormateados.filter(p => 
-            p.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-            p.categoria.toLowerCase().includes(busqueda.toLowerCase())
-          );
-        }
-
-      } else {
-        const { data: prodCatData } = await supabase
-          .from('productos_categorias')
-          .select('codigo, nombre, categoria')
-          .eq('categoria', categoria);
-
-        // ELIMINAR DUPLICADOS POR CÓDIGO - mantener solo el primero
-        const uniqueProducts = [];
-        const seenCodes = new Set();
-        
-        for (const prod of prodCatData || []) {
-          if (!seenCodes.has(prod.codigo)) {
-            seenCodes.add(prod.codigo);
-            uniqueProducts.push(prod);
-          }
-        }
-
-        if (uniqueProducts.length === 0) {
-          setProductos([]);
-          setLoading(false);
-          setLoadingCategory(false);
-          return;
-        }
-
-        const codigos = uniqueProducts.map(p => p.codigo);
-        
-        const { data: preciosData } = await supabase
-          .from('productos')
-          .select('codigo, precio_venta_bs, cantidad')
-          .in('codigo', codigos);
-
-        productosFormateados = uniqueProducts.map(prod => {
-          const precioInfo = preciosData?.find(p => p.codigo === prod.codigo);
-          return {
-            id: prod.codigo,
-            nombre: prod.nombre || prod.codigo,
-            categoria: prod.categoria,
-            precio_bs: parseFloat(precioInfo?.precio_venta_bs) || 0,
-            cantidad: precioInfo?.cantidad || 0,
-            disponible: (precioInfo?.cantidad || 0) > 0
-          };
-        });
-
-        if (busqueda) {
-          productosFormateados = productosFormateados.filter(p => 
-            p.nombre.toLowerCase().includes(busqueda.toLowerCase())
-          );
-        }
+      if (categoria !== 'todos') {
+        query = query.eq('categoria', categoria);
+      }
+      if (busqueda) {
+        query = query.or(`nombre.ilike.%${busqueda}%,codigo.ilike.%${busqueda}%`);
       }
 
-      setProductos(productosFormateados);
+      const { data: catData, error: catError, count } = await query;
+      if (catError) throw catError;
+
+      console.log('Paso 1 - Cat data:', catData);
+
+      // Unique por código
+      const uniqueMap = new Map();
+      catData?.forEach(item => {
+        if (!uniqueMap.has(item.codigo)) uniqueMap.set(item.codigo, item);
+      });
+      const uniqueCatProducts = Array.from(uniqueMap.values());
+
+      if (!uniqueCatProducts.length) {
+        setHasMore(false);
+        if (reset) setProductos([]);
+        throw new Error('No hay productos');
+      }
+
+      const codigos = uniqueCatProducts.map(p => p.codigo);
+      console.log('Códigos únicos:', codigos);
+
+      // PASO 2: Obtener precios DESDE productos usando IN
+      const { data: preciosData, error: preciosError } = await supabase
+        .from('productos')
+        .select('codigo, precio_venta, cantidad')
+        .in('codigo', codigos);
+
+      if (preciosError) {
+        console.warn('No precios encontrados:', preciosError);
+        // Continuar sin precios (usar 0)
+      }
+
+      console.log('Paso 2 - Precios data:', preciosData);
+
+      // Combinar datos
+      const productosFinales = uniqueCatProducts.map(catProd => {
+        const precioMatch = preciosData?.find(p => p.codigo === catProd.codigo);
+        
+        return {
+          id: catProd.codigo,
+          nombre: catProd.nombre || catProd.codigo,
+          categoria: catProd.categoria,
+          precio_usd: parseFloat(precioMatch?.precio_venta) || 0,
+          cantidad: parseInt(precioMatch?.cantidad) || 0,
+          disponible: (parseInt(precioMatch?.cantidad) || 0) > 0,
+          codigo: catProd.codigo
+        };
+      });
+
+      console.log('Productos finales:', productosFinales);
+
+      if (reset) {
+        setProductos(productosFinales);
+      } else {
+        setProductos(prev => [...prev, ...productosFinales]);
+      }
+
+      setHasMore((count || 0) > pageNum * PRODUCTOS_POR_PAGINA);
+      
     } catch (err) {
-      console.error('Error cargando productos:', err);
-      setError('Error al cargar productos: ' + err.message);
+      console.error('Error loadProductos:', err);
+      setError(`Error: ${err.message}`);
+      if (reset) setProductos([]);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
       setLoadingCategory(false);
     }
   };
 
-  const handleCategoryChange = (categoriaId) => {
-    if (categoriaId === activeCategory) return;
-    setActiveCategory(categoriaId);
+  const handleCategoryChange = (catId) => {
+    if (catId === activeCategory) return;
+    setActiveCategory(catId);
     setSearchTerm('');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Función mejorada para agregar al carrito
-  const handleAddToCart = (e, producto) => {
+  const handleAddToCart = (e, prod) => {
     e.stopPropagation();
-    
-    if (!producto.disponible) return;
+    if (!prod.disponible) return;
 
-    // Obtener carrito actual del localStorage
-    const savedCart = localStorage.getItem('rrbikerCart');
-    let currentCart = savedCart ? JSON.parse(savedCart) : [];
+    let cart = JSON.parse(localStorage.getItem('rrbikerCart') || '[]');
+    const idx = cart.findIndex(item => item.id === prod.id);
+    const tasa = tasaDolar?.precio_venta || tasaDolar?.promedio || 36.50;
+    const precioBs = prod.precio_usd * tasa;
 
-    // Buscar si el producto ya existe en el carrito
-    const existingItemIndex = currentCart.findIndex(item => item.id === producto.id);
-
-    if (existingItemIndex >= 0) {
-      // Si existe, aumentar cantidad
-      currentCart[existingItemIndex].quantity += 1;
+    if (idx >= 0) {
+      cart[idx].quantity += 1;
     } else {
-      // Si no existe, agregar nuevo item
-      currentCart.push({
-        id: producto.id,
-        nombre: producto.nombre,
-        categoria: producto.categoria,
-        precio_bs: producto.precio_bs,
-        quantity: 1,
-        addedAt: new Date().toISOString()
+      cart.push({
+        id: prod.id, nombre: prod.nombre, categoria: prod.categoria,
+        precio_usd: prod.precio_usd, precio_bs: precioBs, tasa_usada: tasa,
+        quantity: 1, addedAt: new Date().toISOString()
       });
     }
 
-    // Guardar en localStorage
-    localStorage.setItem('rrbikerCart', JSON.stringify(currentCart));
-
-    // Disparar evento personalizado para notificar al Header
+    localStorage.setItem('rrbikerCart', JSON.stringify(cart));
     window.dispatchEvent(new Event('rrbikerCartUpdated'));
-
-    // Mostrar feedback visual
-    setAddedProduct(producto.id);
+    setAddedProduct(prod.id);
     setTimeout(() => setAddedProduct(null), 1500);
-
-    console.log('Agregado al carrito:', producto);
   };
 
-  const formatBs = (valor) => {
-    return new Intl.NumberFormat('es-VE', {
-      style: 'currency',
-      currency: 'VES',
-      minimumFractionDigits: 2
-    }).format(valor || 0);
+  const formatPrecioBs = (usd) => {
+    if (!usd || usd === 0) return 'Bs. 0,00';
+    if (loadingTasa) return 'Cargando...';
+    const tasa = tasaDolar?.precio_venta || tasaDolar?.promedio || 36.50;
+    return new Intl.NumberFormat('es-VE', { 
+      style: 'currency', currency: 'VES', minimumFractionDigits: 2 
+    }).format(usd * tasa);
+  };
+
+  const formatUsd = (val) => {
+    if (!val || val === 0) return '$ 0.00';
+    return new Intl.NumberFormat('en-US', { 
+      style: 'currency', currency: 'USD', minimumFractionDigits: 2 
+    }).format(val);
   };
 
   if (error) {
@@ -279,13 +310,9 @@ const Productos = () => {
         <Header />
         <div className="error-container">
           <h2><FaExclamationTriangle /> {error}</h2>
-          <button 
-            onClick={() => {
-              loadCategorias();
-              loadProductos(activeCategory);
-            }} 
-            className="btn-retry"
-          >
+          <button className="btn-retry" onClick={() => {
+            setError(null); loadCategorias(); loadProductos(activeCategory, '', 1, true);
+          }}>
             Reintentar
           </button>
         </div>
@@ -294,19 +321,16 @@ const Productos = () => {
     );
   }
 
-  const categoriaActivaNombre = activeCategory === 'todos' 
-    ? 'TODOS LOS PRODUCTOS' 
-    : activeCategory.toUpperCase();
+  const catName = activeCategory === 'todos' ? 'TODOS LOS PRODUCTOS' : activeCategory.toUpperCase();
 
   return (
     <>
       <Header />
+      <br /><br /><br />
       
-      {/* HERO COMPACTO */}
       <section className="prod-hero">
         <div className="prod-hero-bg">
-          <div className="grid-overlay"></div>
-          <div className="hero-glow"></div>
+          <div className="grid-overlay"></div><div className="hero-glow"></div>
         </div>
         <div className="container prod-hero-content">
           <div className="hero-badge"><FaMotorcycle /> CATÁLOGO PREMIUM</div>
@@ -314,187 +338,153 @@ const Productos = () => {
             <span className="title-dark">REPUESTOS &</span>
             <span className="title-red">ACCESORIOS</span>
           </h1>
-          <p className="prod-hero-sub">
-            Equipamiento profesional para motocicletas de alta cilindrada. 
-            Marcas originales con garantía oficial.
-          </p>
+          <p className="prod-hero-sub">Equipamiento profesional para motos. Marcas originales con garantía.</p>
+          
+          <div className="tasa-dolar-badge">
+            <FaDollarSign />
+            {loadingTasa ? 'Cargando...' : (
+              <>
+                <span>BCV: Bs. {tasaDolar?.promedio?.toFixed(2) || 'N/A'}</span>
+                <span className="tasa-fecha">
+                  {tasaDolar?.fechaActualizacion ? new Date(tasaDolar.fechaActualizacion).toLocaleTimeString('es-VE') : 'N/A'}
+                </span>
+              </>
+            )}
+          </div>
+          
           <div className="hero-stats">
-            <div className="h-stat">
-              <span className="h-num">{totalCount}+</span>
-              <span className="h-label">PRODUCTOS</span>
-            </div>
-            <div className="h-stat">
-              <span className="h-num">{categorias.length - 1}+</span>
-              <span className="h-label">CATEGORÍAS</span>
-            </div>
-            <div className="h-stat">
-              <span className="h-num">24H</span>
-              <span className="h-label">ENVÍO</span>
-            </div>
+            <div className="h-stat"><span className="h-num">{totalCount.toLocaleString()}+</span><span className="h-label">PRODUCTOS</span></div>
+            <div className="h-stat"><span className="h-num">{categorias.length - 1}+</span><span className="h-label">CATEGORÍAS</span></div>
+            <div className="h-stat"><span className="h-num">24H</span><span className="h-label">ENVÍO</span></div>
           </div>
         </div>
       </section>
 
-      {/* CATEGORÍAS - HORIZONTAL SCROLL */}
       <section className="categories-section">
         <div className="container">
           <div className="categories-header">
             <span className="cat-label">CATEGORÍAS</span>
-            <div className="scroll-hint">
-              <FaArrowRight /> Desliza para ver más
-            </div>
+            <div className="scroll-hint"><FaArrowRight /> Desliza →</div>
           </div>
           
           <div className="categories-scroll-container">
-            <button 
-              className="scroll-btn left"
-              onClick={() => scrollCategories('left')}
-            >
-              <FaChevronLeft />
-            </button>
-            
+            <button className="scroll-btn left" onClick={() => scrollCategories('left')}><FaChevronLeft /></button>
             <div className="categories-track" ref={categoryScrollRef}>
-              {categorias.map((cat, index) => (
+              {categorias.map((cat, i) => (
                 <button
                   key={cat.id}
                   className={`category-item ${activeCategory === cat.id ? 'active' : ''}`}
                   onClick={() => handleCategoryChange(cat.id)}
                   disabled={loadingCategory}
-                  style={{ animationDelay: `${index * 0.05}s` }}
+                  style={{ animationDelay: `${i * 0.05}s` }}
                 >
-                  <div className="cat-icon">
-                    {cat.icono}
-                  </div>
+                  <div className="cat-icon">{cat.icono}</div>
                   <div className="cat-details">
                     <span className="cat-name">{cat.nombre}</span>
-                    <span className="cat-count">{cat.count} productos</span>
+                    <span className="cat-count">{cat.count.toLocaleString()} productos</span>
                   </div>
-                  {activeCategory === cat.id && (
-                    <div className="active-indicator"></div>
-                  )}
+                  {activeCategory === cat.id && <div className="active-indicator"></div>}
                 </button>
               ))}
             </div>
-            
-            <button 
-              className="scroll-btn right"
-              onClick={() => scrollCategories('right')}
-            >
-              <FaChevronRight />
-            </button>
+            <button className="scroll-btn right" onClick={() => scrollCategories('right')}><FaChevronRight /></button>
           </div>
 
-          {/* LOADING BAR */}
-          {loadingCategory && (
+          {loadingCategory && page === 1 && (
             <div className="loading-bar-container">
-              <div className="loading-bar">
-                <div className="loading-progress"></div>
-              </div>
-              <span className="loading-text">
-                <FaSpinner className="spin" /> Cargando {categoriaActivaNombre}...
-              </span>
+              <div className="loading-bar"><div className="loading-progress"></div></div>
+              <span className="loading-text"><FaSpinner className="spin" /> Cargando...</span>
             </div>
           )}
         </div>
       </section>
 
-      {/* BÚSQUEDA */}
       <section className="search-section">
         <div className="container">
           <div className="search-wrapper">
             <div className="search-box">
               <FaSearch className="search-icon" />
               <input 
-                type="text" 
-                placeholder={`Buscar en ${categoriaActivaNombre.toLowerCase()}...`}
+                placeholder={`Buscar en ${catName.toLowerCase()}...`}
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={e => setSearchTerm(e.target.value)}
                 className="search-input"
                 disabled={loadingCategory}
               />
-              {searchTerm && !loadingCategory && (
-                <button 
-                  className="clear-search" 
-                  onClick={() => setSearchTerm('')}
-                >
-                  ×
-                </button>
-              )}
+              {searchTerm && <button className="clear-search" onClick={() => setSearchTerm('')}>×</button>}
             </div>
-            <div className="results-badge">
-              {productos.length} productos
-            </div>
+            <div className="results-badge">{productos.length} de {totalCount.toLocaleString()}</div>
           </div>
         </div>
       </section>
 
-      {/* PRODUCTOS - MÁS CARDS POR FILA */}
       <section className="products-section">
         <div className="container">
-          {loading ? (
+          {loading && !productos.length ? (
             <div className="products-grid-compact">
-              {[1,2,3,4,5,6,7,8].map(i => (
-                <div key={i} className="skeleton-card-compact" />
-              ))}
+              {[1,2,3,4,5,6,7,8,9,10,11,12].map(i => <div key={i} className="skeleton-card-compact" />)}
             </div>
           ) : (
-            <div className="products-grid-compact">
-              {productos.map((prod, idx) => (
-                <div 
-                  key={`${prod.id}-${idx}`}  // KEY ÚNICA USANDO ÍNDICE COMO RESPALDO
-                  className={`product-card-compact ${hoveredProduct === prod.id ? 'hovered' : ''} ${!prod.disponible ? 'out-of-stock' : ''} ${addedProduct === prod.id ? 'added-to-cart' : ''}`}
-                  onMouseEnter={() => setHoveredProduct(prod.id)}
-                  onMouseLeave={() => setHoveredProduct(null)}
-                  style={{ animationDelay: `${idx * 0.03}s` }}
-                >
-                  <div className="card-header">
-                    <span className="category-tag">{prod.categoria}</span>
-                    {!prod.disponible && <span className="stock-tag">AGOTADO</span>}
-                    {addedProduct === prod.id && (
-                      <span className="added-tag"><FaCheck /> AGREGADO</span>
-                    )}
-                  </div>
-                  
-                  <div className="card-image">
-                    <FaMotorcycle />
-                  </div>
-                  
-                  <div className="card-content">
-                    <h4 className="product-title" title={prod.nombre}>
-                      {prod.nombre}
-                    </h4>
-                    
-                    <div className="price-tag">
-                      {formatBs(prod.precio_bs)}
-                    </div>
-                    
-                    <button 
-                      className={`btn-buy ${addedProduct === prod.id ? 'success' : ''}`}
-                      onClick={(e) => handleAddToCart(e, prod)}
-                      disabled={!prod.disponible}
+            <>
+              <div className="products-grid-compact">
+                {productos.map((prod, idx) => {
+                  const isLast = idx === productos.length - 1;
+                  return (
+                    <div 
+                      key={`${prod.id}-${idx}`}
+                      ref={isLast ? lastProductRef : null}
+                      className={`product-card-compact 
+                        ${hoveredProduct === prod.id ? 'hovered' : ''} 
+                        ${!prod.disponible ? 'out-of-stock' : ''} 
+                        ${addedProduct === prod.id ? 'added-to-cart' : ''}`}
+                      onMouseEnter={() => setHoveredProduct(prod.id)}
+                      onMouseLeave={() => setHoveredProduct(null)}
+                      style={{ animationDelay: `${idx * 0.03}s` }}
                     >
-                      {addedProduct === prod.id ? (
-                        <><FaCheck /> AGREGADO</>
-                      ) : (
-                        <><FaShoppingCart /> {prod.disponible ? 'AGREGAR' : 'SIN STOCK'}</>
-                      )}
-                    </button>
-                  </div>
+                      <div className="card-header">
+                        <span className="category-tag">{prod.categoria}</span>
+                        {!prod.disponible && <span className="stock-tag">SIN STOCK</span>}
+                        {addedProduct === prod.id && <span className="added-tag"><FaCheck /> AGREGADO</span>}
+                      </div>
+                      <div className="card-image"><FaMotorcycle /></div>
+                      <div className="card-content">
+                        <h4 className="product-title" title={prod.nombre}>{prod.nombre}</h4>
+                        <div className="price-container">
+                          <div className="price-bs">{formatPrecioBs(prod.precio_usd)}</div>
+                          <div className="price-usd">{formatUsd(prod.precio_usd)} USD</div>
+                        </div>
+                        <button 
+                          className={`btn-buy ${addedProduct === prod.id ? 'success' : ''}`}
+                          onClick={e => handleAddToCart(e, prod)}
+                          disabled={!prod.disponible || loadingTasa}
+                        >
+                          {addedProduct === prod.id ? <><FaCheck /> AGREGADO</> : 
+                           <><FaShoppingCart /> {prod.disponible ? 'AGREGAR' : 'SIN STOCK'}</>}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              
+              {loadingMore && (
+                <div className="loading-more">
+                  <FaSpinner className="spin" /> Cargando más...
                 </div>
-              ))}
-            </div>
+              )}
+              
+              {!hasMore && productos.length && (
+                <div className="no-more-products">¡Ya viste todos!</div>
+              )}
+            </>
           )}
 
-          {!loading && productos.length === 0 && (
+          {!loading && !productos.length && (
             <div className="empty-state-compact">
               <FaSearch className="empty-icon" />
               <p>No se encontraron productos</p>
               <div className="empty-actions">
-                {searchTerm && (
-                  <button className="btn-action" onClick={() => setSearchTerm('')}>
-                    Limpiar búsqueda
-                  </button>
-                )}
+                {searchTerm && <button className="btn-action" onClick={() => setSearchTerm('')}>Limpiar</button>}
                 {activeCategory !== 'todos' && (
                   <button className="btn-action secondary" onClick={() => handleCategoryChange('todos')}>
                     Ver todos

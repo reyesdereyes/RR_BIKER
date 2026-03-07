@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import supabase from '../conf/supabase';
+import ProductoModal from '../components/ProductoModal';
 import '../css/admin.css';
 
 const Admin = () => {
@@ -37,6 +38,9 @@ const Admin = () => {
   const [isProductoModalOpen, setIsProductoModalOpen] = useState(false);
   const [isNewProductoModalOpen, setIsNewProductoModalOpen] = useState(false);
   
+  // Estado para categorías dinámicas
+  const [categorias, setCategorias] = useState([]);
+  
   const pedidosPerPage = 10;
   const productosPerPage = 12;
   const navigate = useNavigate();
@@ -44,7 +48,6 @@ const Admin = () => {
   // Refs para animaciones
   const statsRef = useRef(null);
   const tableRef = useRef(null);
-  const modalRef = useRef(null);
 
   // Verificar sesión
   useEffect(() => {
@@ -55,6 +58,7 @@ const Admin = () => {
         return;
       }
       setUser(session.user);
+      await fetchCategorias();
       await fetchData();
     };
     init();
@@ -102,24 +106,38 @@ const Admin = () => {
     }
   };
 
-  const openModal = (modalType) => {
-    if (modalRef.current) {
-      modalRef.current.style.opacity = '0';
-      modalRef.current.style.transform = 'scale(0.8) translateY(50px)';
-      setTimeout(() => {
-        if (modalType === 'pedido') setIsPedidoModalOpen(true);
-        if (modalType === 'producto') setIsProductoModalOpen(true);
-        if (modalType === 'nuevo-producto') setIsNewProductoModalOpen(true);
-      }, 50);
+  // Abrir modal de nuevo producto
+  const openNuevoProductoModal = () => {
+    setEditingProducto({
+      codigo: '',
+      categoria: '',
+      cantidad: 0,
+      costo_unitario: 0,
+      precio_venta: 0,
+      factor_cambio: 36.50,
+    });
+    setIsNewProductoModalOpen(true);
+  };
+
+  // Cargar categorías desde Supabase
+  const fetchCategorias = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('productos_categorias')
+        .select('nombre, codigo')
+        .order('nombre');
+      
+      if (error) throw error;
+      setCategorias(data || []);
+    } catch (error) {
+      console.error('Error fetching categorías:', error);
     }
   };
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Obtener productos primero para tenerlos disponibles
       const productosData = await fetchProductosData();
-      // Luego obtener pedidos con los productos disponibles
       await fetchPedidosData(productosData);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -187,6 +205,137 @@ const Admin = () => {
     });
   };
 
+  // ============================================
+  // FUNCIÓN handleSaveProducto CORREGIDA
+  // ============================================
+ const handleSaveProducto = async (isNew = false) => {
+  try {
+    // Datos base según la estructura REAL de la tabla 'productos'
+    const base = {
+      codigo: editingProducto.codigo,
+      costo_unitario: parseFloat(editingProducto.costo_unitario) || 0,
+      cantidad: parseInt(editingProducto.cantidad) || 0,
+      factor_cambio: parseFloat(editingProducto.factor_cambio) || 36.50,
+      precio_venta: parseFloat(editingProducto.precio_venta) || 0,
+      // NOTA: La tabla 'productos' NO tiene campo 'categoria'
+      // Si necesitas categorías, debes usar la tabla 'productos_categorias' separadamente
+    };
+
+    // Calcular campos derivados
+    const factor = base.factor_cambio;
+    const margenUsd = base.precio_venta - base.costo_unitario;
+    
+    const productoData = {
+      ...base,
+      margen_contribucion: margenUsd,
+      precio_bcv: base.precio_venta * factor,
+      precio_venta_bs: base.precio_venta * factor,
+      margen_bruto_bs: margenUsd * factor,
+      promo_en_divisas: base.precio_venta * 0.95,
+      margen_bruto_usd: margenUsd,
+    };
+
+    console.log('Insertando en tabla productos:', productoData);
+
+    if (isNew) {
+      const { data, error } = await supabase
+        .from('productos')
+        .insert([productoData])
+        .select();
+      
+      if (error) throw error;
+      console.log('Producto creado:', data);
+      
+      // ============================================
+      // OPCIONAL: Si quieres también guardar la categoría
+      // en la tabla productos_categorias
+      // ============================================
+      if (editingProducto.categoria && data && data[0]) {
+        const { error: catError } = await supabase
+          .from('productos_categorias')
+          .insert([{
+            codigo: base.codigo,
+            nombre: editingProducto.categoria,
+            categoria: editingProducto.categoria,
+            costo_unitario: base.costo_unitario,
+            cantidad: base.cantidad,
+            factor_cambio: base.factor_cambio,
+            precio_venta: base.precio_venta,
+            margen_contribucion: margenUsd,
+            precio_bcv: base.precio_venta * factor,
+            precio_venta_bs: base.precio_venta * factor,
+            margen_bruto_bs: margenUsd * factor,
+            promo_en_divisas: base.precio_venta * 0.95,
+            margen_bruto_usd: margenUsd,
+          }]);
+        
+        if (catError) {
+          console.warn('Error al guardar categoría:', catError);
+          // No fallamos todo si solo falla la categoría
+        }
+      }
+      // ============================================
+      
+    } else {
+      const { data, error } = await supabase
+        .from('productos')
+        .update(productoData)
+        .eq('id', editingProducto.id)
+        .select();
+      
+      if (error) throw error;
+      console.log('Producto actualizado:', data);
+    }
+    
+    await fetchData();
+    setIsProductoModalOpen(false);
+    setIsNewProductoModalOpen(false);
+    setEditingProducto(null);
+    
+  } catch (error) {
+    console.error('Error completo:', error);
+    alert('Error al guardar producto: ' + (error.message || 'Verifica los datos'));
+  }
+};
+  // ============================================
+
+  const handleSavePedido = async () => {
+    try {
+      const { error } = await supabase
+        .from('pedidos')
+        .update({
+          estado: editingPedido.estado,
+          notas: editingPedido.notas,
+          direccion_envio: editingPedido.direccion_envio,
+          ciudad_envio: editingPedido.ciudad_envio,
+          estado_envio: editingPedido.estado_envio,
+          telefono_contacto: editingPedido.telefono_contacto
+        })
+        .eq('id', editingPedido.id);
+      
+      if (error) throw error;
+      setPedidos(pedidos.map(p => p.id === editingPedido.id ? editingPedido : p));
+      setIsPedidoModalOpen(false);
+    } catch (error) {
+      alert('Error al guardar');
+    }
+  };
+
+  const handleDeleteProducto = async (id) => {
+    if (!window.confirm('¿Eliminar este producto?')) return;
+    try {
+      await supabase.from('productos').delete().eq('id', id);
+      await fetchData();
+    } catch (error) {
+      alert('Error al eliminar');
+    }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/login');
+  };
+
   // Filtrar Pedidos
   const filteredPedidos = pedidos.filter(pedido => {
     const matchesSearch = 
@@ -236,65 +385,6 @@ const Admin = () => {
       day: '2-digit', month: '2-digit', year: 'numeric',
       hour: '2-digit', minute: '2-digit'
     });
-  };
-
-  const handleSavePedido = async () => {
-    try {
-      const { error } = await supabase
-        .from('pedidos')
-        .update({
-          estado: editingPedido.estado,
-          notas: editingPedido.notas,
-          direccion_envio: editingPedido.direccion_envio,
-          ciudad_envio: editingPedido.ciudad_envio,
-          estado_envio: editingPedido.estado_envio,
-          telefono_contacto: editingPedido.telefono_contacto
-        })
-        .eq('id', editingPedido.id);
-      
-      if (error) throw error;
-      setPedidos(pedidos.map(p => p.id === editingPedido.id ? editingPedido : p));
-      setIsPedidoModalOpen(false);
-    } catch (error) {
-      alert('Error al guardar');
-    }
-  };
-
-  const handleSaveProducto = async (isNew = false) => {
-    try {
-      const producto = editingProducto;
-      if (isNew) {
-        const { error } = await supabase.from('productos').insert([producto]);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('productos')
-          .update(producto)
-          .eq('id', producto.id);
-        if (error) throw error;
-      }
-      await fetchData();
-      setIsProductoModalOpen(false);
-      setIsNewProductoModalOpen(false);
-      setEditingProducto(null);
-    } catch (error) {
-      alert('Error al guardar producto');
-    }
-  };
-
-  const handleDeleteProducto = async (id) => {
-    if (!window.confirm('¿Eliminar este producto?')) return;
-    try {
-      await supabase.from('productos').delete().eq('id', id);
-      await fetchData();
-    } catch (error) {
-      alert('Error al eliminar');
-    }
-  };
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate('/login');
   };
 
   const getStatusBadge = (status) => {
@@ -616,9 +706,11 @@ const Admin = () => {
                 <div className="filter-chips">
                   <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
                     <option value="all">Todas las categorías</option>
-                    <option value="electronica">Electrónica</option>
-                    <option value="ropa">Ropa</option>
-                    <option value="hogar">Hogar</option>
+                    {categorias.map((cat) => (
+                      <option key={cat.codigo || cat.nombre} value={cat.nombre}>
+                        {cat.nombre}
+                      </option>
+                    ))}
                   </select>
                   
                   <select value={stockFilter} onChange={(e) => setStockFilter(e.target.value)}>
@@ -631,17 +723,7 @@ const Admin = () => {
 
                 <button 
                   className="btn-primary glow"
-                  onClick={() => {
-                    setEditingProducto({
-                      codigo: '',
-                      nombre: '',
-                      categoria: '',
-                      cantidad: 0,
-                      costo_unitario: 0,
-                      precio_venta: 0
-                    });
-                    setIsNewProductoModalOpen(true);
-                  }}
+                  onClick={openNuevoProductoModal}
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -770,87 +852,23 @@ const Admin = () => {
         </div>
       )}
 
-      {/* Modal Producto */}
-      {(isProductoModalOpen || isNewProductoModalOpen) && (
-        <div className="modal-overlay" onClick={() => {
-          setIsProductoModalOpen(false);
+      {/* ============================================
+          COMPONENTE MODAL DE PRODUCTO (NUEVO/EDITAR)
+          ============================================ */}
+      <ProductoModal
+        isOpen={isNewProductoModalOpen || isProductoModalOpen}
+        onClose={() => {
           setIsNewProductoModalOpen(false);
-        }}>
-          <div className="modal premium" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>{isNewProductoModalOpen ? 'Nuevo Producto' : 'Editar Producto'}</h3>
-              <button className="close-btn" onClick={() => {
-                setIsProductoModalOpen(false);
-                setIsNewProductoModalOpen(false);
-              }}>×</button>
-            </div>
-            <div className="modal-body">
-              <div className="form-grid">
-                <div className="form-group">
-                  <label>Código</label>
-                  <input 
-                    type="text" 
-                    value={editingProducto?.codigo || ''}
-                    onChange={(e) => setEditingProducto({...editingProducto, codigo: e.target.value})}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Categoría</label>
-                  <select 
-                    value={editingProducto?.categoria || ''}
-                    onChange={(e) => setEditingProducto({...editingProducto, categoria: e.target.value})}
-                  >
-                    <option value="">Seleccionar</option>
-                    <option value="electronica">Electrónica</option>
-                    <option value="ropa">Ropa</option>
-                    <option value="hogar">Hogar</option>
-                  </select>
-                </div>
-              </div>
-              <div className="form-grid three">
-                <div className="form-group">
-                  <label>Cantidad</label>
-                  <input 
-                    type="number" 
-                    value={editingProducto?.cantidad || 0}
-                    onChange={(e) => setEditingProducto({...editingProducto, cantidad: parseInt(e.target.value) || 0})}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Costo Unitario</label>
-                  <input 
-                    type="number" 
-                    step="0.01"
-                    value={editingProducto?.costo_unitario || 0}
-                    onChange={(e) => setEditingProducto({...editingProducto, costo_unitario: parseFloat(e.target.value) || 0})}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Precio Venta</label>
-                  <input 
-                    type="number" 
-                    step="0.01"
-                    value={editingProducto?.precio_venta || 0}
-                    onChange={(e) => setEditingProducto({...editingProducto, precio_venta: parseFloat(e.target.value) || 0})}
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn-secondary" onClick={() => {
-                setIsProductoModalOpen(false);
-                setIsNewProductoModalOpen(false);
-              }}>Cancelar</button>
-              <button 
-                className="btn-primary glow" 
-                onClick={() => handleSaveProducto(isNewProductoModalOpen)}
-              >
-                {isNewProductoModalOpen ? 'Crear Producto' : 'Guardar Cambios'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          setIsProductoModalOpen(false);
+          setEditingProducto(null);
+        }}
+        onSave={handleSaveProducto}
+        editingProducto={editingProducto}
+        setEditingProducto={setEditingProducto}
+        categorias={categorias}
+        isNew={isNewProductoModalOpen}
+      />
+      {/* ============================================ */}
     </div>
   );
 };
